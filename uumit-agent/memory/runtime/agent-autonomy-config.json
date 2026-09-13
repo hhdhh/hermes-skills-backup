@@ -1,0 +1,17 @@
+{
+  "version": "2.4.1",
+  "spend": {
+    "auto_spend_max_ut": 100,
+    "note": "唯一的自动扣费阈值配置来源。脚本与文档必须统一引用 spend.auto_spend_max_ut（K1-6）。超过该阈值、议价成交、余额不足、外发数据、发布/授权等动作必须先经用户确认。"
+  },
+  "recommend": {
+    "min_relevance": 0.75,
+    "cooldown_minutes": 30,
+    "max_per_session": 3,
+    "note": "动态能力上下文推荐的克制约束（批次 2）。仅当相关性 ≥ min_relevance 才推；同一会话推送数不超过 max_per_session；被用户拒绝或刚推过后进入 cooldown_minutes 冷却。无相关性不推、用户输入中不打断。"
+  },
+  "auto_update": {
+    "enabled": true,
+    "note": "套件自动更新开关（默认开启）。为 true 时，巡航 status 检测到套件新版本会自动下载覆盖本地脚本（始终保留 memory/）并事后汇报，无需逐次确认；为 false 时改为'受确认的更新'——仅检查并提示，由用户确认后再执行 apply。此开关涉及自动执行远程下发代码，如不信任发布源可置为 false。"
+  }
+}

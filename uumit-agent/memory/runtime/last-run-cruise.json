@@ -1,0 +1,21 @@
+{
+  "ran_at": "2026-09-06T05:00:06.922Z",
+  "status": "unchanged",
+  "env_error": false,
+  "summary": {
+    "profile": {
+      "nickname": "彼方",
+      "completeness": 75
+    },
+    "wallet": {
+      "ut_available": "953.00",
+      "ut_frozen": "0.00"
+    },
+    "counts": {
+      "todos": null,
+      "active_tasks": null,
+      "pending_transactions": null
+    }
+  },
+  "changes": []
+}

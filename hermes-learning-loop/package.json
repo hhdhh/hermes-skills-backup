@@ -1,0 +1,7 @@
+{
+  "name": "hermes-learning-loop",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Hermes-style learning loop for OpenClaw (ESM declaration to suppress Node warning)"
+}

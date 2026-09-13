@@ -1,0 +1,12 @@
+{
+  "name": "ljg-ppt-design",
+  "version": "0.1.0",
+  "description": "Pi extension for ljg-ppt-design — PPT design system",
+  "main": "index.ts",
+  "pi": {
+    "extension": true,
+    "name": "ljg-ppt-design",
+    "category": "office",
+    "version": "0.1.0"
+  }
+}

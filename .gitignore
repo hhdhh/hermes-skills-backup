@@ -1,0 +1,13 @@
+# 大目录/垃圾排除
+_sources/
+_external/
+.curator_backups/
+.hub/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# 系统
+.DS_Store
+*.log

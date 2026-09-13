@@ -1,0 +1,31 @@
+interface:
+  display_name: "CLI-Anything"
+  short_description: "Build or refine CLI-Anything harnesses from OpenClaw."
+  default_prompt: "Use CLI-Anything to build, refine, test, or validate a harness for the user's target software or source repository. Prefer real software backends, the unified ReplSkin, and --json output. Run TEST.md-planned E2E tests against the actual installed command before reporting success."
+
+# OpenClaw platform hints consumed by the agent harness installer.
+openclaw:
+  skill_install_targets:
+    - "~/.agents/skills"        # user-global
+    - "~/.openclaw/workspace/skills"  # workspace
+  install_script: "scripts/install.sh"
+  test_script: "tests/test_install.sh"
+  python: "python3"             # vendored harnesses require >=3.10
+
+# Tools the agent is expected to call while building a harness.
+tools:
+  primary:
+    - exec
+    - read
+    - write
+    - edit
+    - apply_patch
+  support:
+    - web_fetch
+    - web_search
+    - sessions_spawn
+    - process
+    - wiki_apply
+    - skill_workshop
+    - cron
+    - gateway

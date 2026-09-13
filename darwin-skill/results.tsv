@@ -1,0 +1,7 @@
+timestamp	commit	skill	old_score	new_score	status	dimension	note	eval_mode
+2026-06-03T12:10	84cab15	fox-xiaohongshu-publish	-	51.0	baseline	dim3_5_9_low	dim8=dry_run,无子agent	dry_run
+新增 Obscura baseline 评估行
+2026-06-07T15:09	ab31538	obscura-automation	-	[BASE]	baseline	[base]	Blacklist added pre-eval	dry_run
+2026-06-07T15:11	31c7831	obscura-automation	62	69	keep	dim3+dim4	+Decision Checkpoints+Failure Recovery	dry_run
+2026-06-07T15:12	4210f7d	obscura-automation	69	71	keep	dim2	+Use Case Quick Map (触顶边缘, 准备 break)	dry_run
+2026-06-07T15:13	3f1a286	obscura-automation	71	73	keep	dim1+dim7	+frontmatter anti-use+Status/Notes trim (HL-4 触顶, break)	dry_run

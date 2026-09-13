@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.hermes.gateway-PROFILE</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/kk/miniconda3/bin/python3.13</string>
+        <string>-m</string>
+        <string>hermes_cli.main</string>
+        <string>--profile</string>
+        <string>PROFILE</string>
+        <string>gateway</string>
+        <string>run</string>
+        <string>--replace</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/kk/miniconda3/lib/python3.13/site-packages</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/Cellar/node/26.3.0/bin:/Users/kk/miniconda3/bin:/Users/kk/miniconda3/condabin:/Users/kk/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/homebrew/bin:/Users/kk/.openclaw/tools/node-v22.22.0/bin:/Users/kk/.openclaw/bin:/Users/kk/go/bin:/Users/kk/.mavis/bin:/opt/homebrew/sbin:/Users/kk/.orbstack/bin</string>
+        <key>VIRTUAL_ENV</key>
+        <string>/Users/kk/miniconda3/lib/python3.13/site-packages/venv</string>
+        <key>HERMES_HOME</key>
+        <string>/Users/kk/.hermes/profiles/PROFILE</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/kk/.hermes/profiles/PROFILE/logs/gateway.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/kk/.hermes/profiles/PROFILE/logs/gateway.error.log</string>
+</dict>
+</plist>

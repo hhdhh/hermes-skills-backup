@@ -1,0 +1,30 @@
+{
+  "name": "uumit-cruise",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "requires": {
+    "base_skill": "uumit-agent",
+    "base_version": ">=2.0.0"
+  },
+  "shared_memory": "${UUMIT_SKILL_DIR}/memory/",
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "verify": "node ../uumit-agent/scripts/validate_skill.js",
+    "zip": "uumit-cruise.zip"
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "9cb14c7a27da4c5f110a66528d2d502eb207de98054ce2312e64e94c72febad1",
+      "required": true
+    },
+    "scripts/cruise.js": {
+      "sha256": "d344fb5cb5e41d72c74ab6c4630b18d479b837d53c3598ab52b618b3890e00a2",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    }
+  }
+}

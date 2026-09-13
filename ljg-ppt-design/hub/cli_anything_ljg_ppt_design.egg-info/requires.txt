@@ -1,0 +1,7 @@
+click>=8.0
+
+[dev]
+pytest>=7.0
+
+[pptx]
+python-pptx>=1.0.0

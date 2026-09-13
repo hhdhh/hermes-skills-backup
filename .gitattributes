@@ -1,0 +1,6 @@
+# 敏感凭据脱敏：本地明文 → git 内占位
+# ubuntu/ubuntu 是公司内网机队统一凭据，不应出现在公开仓库
+*.md filter=sanitize-creds
+*.py filter=sanitize-creds
+*.sh filter=sanitize-creds
+*.html filter=sanitize-creds

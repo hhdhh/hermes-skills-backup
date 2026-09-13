@@ -1,0 +1,309 @@
+# Skill Declaration Format (skill.yaml)
+# OpenHuman-inspired standardized skill metadata for Huihui
+# Replaces legacy SKILL.md with machine-readable + human-readable format
+
+# Every skill directory should contain a skill.yaml file
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIELD DEFINITIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ─── Identity ─────────────────────────────────────────────────────────────────
+
+name: string                    # Unique identifier (kebab-case)
+version: string                 # Semantic version (e.g., "1.2.3")
+description: string             # One-liner, what this skill does
+long_description: string        # Detailed explanation, use cases, examples
+
+author: string                  # Creator or maintainer
+keywords: [string]             # Searchable tags
+
+emoji: string                  # Visual identifier (e.g., "🔧")
+
+# ─── Scope ────────────────────────────────────────────────────────────────────
+
+entry_point: string             # Main script to execute (e.g., "main.py", "index.js")
+supported_platforms:           # Where this skill runs
+  - macos
+  - linux
+  - windows
+  - web
+  - mobile
+
+languages: [string]            # Programming languages used (python, typescript, rust, etc.)
+dependencies: [string]          # Required packages (pip/npm/cargo install strings)
+
+# ─── Capabilities ─────────────────────────────────────────────────────────────
+
+triggers:
+  - pattern: string             # When to auto-trigger (e.g., "email", "webhook", "cron")
+    type: "auto|manual|ondemand" # How it activates
+    priority: number             # 1-10, higher = more eager to activate
+
+tools_provided: [string]        # Tool names this skill registers
+  # e.g., ["browser_automation", "web_scraper", "screenshot"]
+
+input_types: [string]           # What data formats this accepts
+  # e.g., ["html", "markdown", "json", "email"]
+
+output_types: [string]          # What data formats this produces
+  # e.g., ["markdown", "structured_data", "notification"]
+
+# ─── Integration ─────────────────────────────────────────────────────────────
+
+openclaw:
+  requires:
+    env: [string]               # Required environment variables
+    plugins: [string]           # Required OpenClaw plugins
+    skills: [string]            # Required other skills (references)
+  conflicts_with:
+    - skill_name                # Skills that shouldn't be loaded together
+
+memory:
+  hot_ram: boolean             # Uses SESSION-STATE.md
+  warm_store: boolean          # Uses LanceDB/vector search
+  cold_store: boolean          # Uses file-based storage
+  persistence: "session|day|longterm"
+
+# ─── Behavior ─────────────────────────────────────────────────────────────────
+
+auto_run:
+  enabled: boolean              # Can run without user prompt
+  interval_minutes: number      # If cron-like, how often
+  on_startup: boolean           # Run when Huihui boots
+  on_trigger: string            # Event that triggers (e.g., "new_email")
+
+safety:
+  destructive: boolean          # Can this delete/overwrite data?
+  requires_approval: boolean    # Should user confirm before action?
+  can_send_external: boolean   # Can this make external network calls?
+  data_retention_days: number   # How long to keep outputs
+
+# ─── Quality ──────────────────────────────────────────────────────────────────
+
+status: "experimental|beta|stable|deprecated"
+tested_on: [string]             # Verified working platforms
+performance:
+  latency_estimate: string      # e.g., "< 100ms", "~2s", "> 30s"
+  token_cost: string            # e.g., "low", "medium", "high"
+  resource_usage: string        # e.g., "minimal", "moderate", "heavy"
+
+changelog:
+  - version: string
+    date: string
+    changes: [string]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE: Huihui Core Skill (TokenJuice)
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: token-juice
+version: "1.0.0"
+description: "Content compression pipeline inspired by OpenHuman TokenJuice"
+long_description: |
+  Compresses raw content (HTML, email, documents) into clean, token-optimized
+  markdown chunks. Removes ads/navigation, converts to markdown, deduplicates
+  URLs, and splits into ≤3000 token pieces. CJK-aware.
+  
+  Used as the first step in Huihui's memory pipeline.
+
+emoji: "🧹"
+author: "Huihui"
+keywords:
+  - compression
+  - token-optimization
+  - html-to-markdown
+  - content-processing
+  - openhuman-inspired
+
+entry_point: "token_juice.py"
+supported_platforms:
+  - macos
+  - linux
+languages:
+  - python
+dependencies: []
+
+triggers:
+  - pattern: "content_processing"
+    type: "ondemand"
+    priority: 5
+
+tools_provided:
+  - "token_juice_compress"
+input_types:
+  - "html"
+  - "markdown"
+  - "raw_text"
+  - "email"
+output_types:
+  - "markdown"
+  - "structured_data"
+
+openclaw:
+  requires: {}
+  conflicts_with: []
+
+memory:
+  hot_ram: false
+  warm_store: false
+  cold_store: true
+  persistence: "session"
+
+auto_run:
+  enabled: false
+  on_startup: false
+
+safety:
+  destructive: false
+  requires_approval: false
+  can_send_external: true   # For URL fetching
+  data_retention_days: 1
+
+status: "stable"
+tested_on:
+  - macos
+performance:
+  latency_estimate: "< 500ms"
+  token_cost: "medium"
+  resource_usage: "minimal"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE: Skill with Auto-Fetch
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: auto-fetch
+version: "1.0.0"
+description: "Automatic data source polling every 20 minutes"
+long_description: |
+  Polls configured data sources (email, calendar, GitHub, Notion) every 20 minutes
+  and feeds new data into the memory pipeline. Inspired by OpenHuman's auto-sync.
+  
+  Runs as background process, sends notifications on significant changes.
+
+emoji: "🔄"
+author: "Huihui"
+keywords:
+  - auto-fetch
+  - polling
+  - sync
+  - background
+  - openhuman-inspired
+
+entry_point: "auto_fetch.py"
+supported_platforms:
+  - macos
+  - linux
+languages:
+  - python
+dependencies:
+  - "requests"
+
+triggers:
+  - pattern: "cron:20min"
+    type: "auto"
+    priority: 8
+
+tools_provided:
+  - "sync_data_source"
+  - "poll_sources"
+input_types:
+  - "oauth_tokens"
+output_types:
+  - "memory_chunks"
+  - "notifications"
+
+openclaw:
+  requires:
+    env:
+      - "FEISHU_WEBHOOK"
+    plugins:
+      - "feishu"
+  conflicts_with: []
+
+memory:
+  hot_ram: true
+  warm_store: true
+  cold_store: true
+  persistence: "longterm"
+
+auto_run:
+  enabled: true
+  interval_minutes: 20
+  on_startup: true
+
+safety:
+  destructive: false
+  requires_approval: false
+  can_send_external: true
+  data_retention_days: 7
+
+status: "beta"
+tested_on:
+  - macos
+performance:
+  latency_estimate: "~30s per source"
+  token_cost: "medium"
+  resource_usage: "minimal"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TEMPLATE (copy this for new skills)
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: my-skill
+version: "0.1.0"
+description: "What this skill does in one line"
+long_description: |
+  Detailed description here.
+  
+emoji: "🎯"
+author: "Huihui"
+keywords:
+  - keyword1
+  - keyword2
+
+entry_point: "main.py"
+supported_platforms:
+  - macos
+  - linux
+languages:
+  - python
+dependencies: []
+
+triggers:
+  - pattern: "manual"
+    type: "manual"
+    priority: 5
+
+tools_provided: []
+input_types: []
+output_types: []
+
+openclaw:
+  requires:
+    env: []
+    plugins: []
+  conflicts_with: []
+
+memory:
+  hot_ram: false
+  warm_store: false
+  cold_store: true
+  persistence: "session"
+
+auto_run:
+  enabled: false
+  on_startup: false
+
+safety:
+  destructive: false
+  requires_approval: false
+  can_send_external: false
+  data_retention_days: 1
+
+status: "experimental"
+tested_on: []
+performance:
+  latency_estimate: "~1s"
+  token_cost: "low"
+  resource_usage: "minimal"

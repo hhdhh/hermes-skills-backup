@@ -1,0 +1,48 @@
+---
+name: huihui-core
+version: 1.1.0
+description: "Core infrastructure skills for Huihui — 9 modules inspired by OpenHuman"
+long_description: |
+  Core infrastructure module inspired by OpenHuman (tinyhumansai/openhuman).
+  9 sub-modules that make Huihui truly "know" her owner.
+  
+  Sub-modules:
+  1. token_juice: HTML→Markdown compression, URL deduplication, CJK-aware chunking
+  2. memory_tree: Structured SQLite storage with topic/time scoring
+  3. skill_yaml: Declarative skill metadata format
+  4. auto_fetch: 20-minute background data polling
+  5. vault: Local folder ingestion (PDF/DOCX/MD/TXT/PY/JS...)
+  6. tree_summarizer: Multi-level hierarchical summarization
+  7. subconscious: Proactive reasoning and insight generation
+  8. phase_workflow: Staged task execution framework
+  9. Mail Adapter: macOS Mail.app extraction without OAuth
+  10. Self-Improvement Loop: automatic lesson recording from corrections
+  11. Owner State Monitor: task context tracking with stale detection
+
+emoji: "⚙️"
+author: "Huihui"
+keywords:
+  - core
+  - infrastructure
+  - openhuman-inspired
+  - token-juice
+  - memory-tree
+  - auto-fetch
+  - vault
+  - tree-summarizer
+  - subconscious
+  - phase-workflow
+  - compression
+
+entry_point: "README.md (this file)"
+supported_platforms:
+  - macos
+  - linux
+
+languages:
+  - python
+
+status: "stable"
+tested_on:
+  - macos
+---

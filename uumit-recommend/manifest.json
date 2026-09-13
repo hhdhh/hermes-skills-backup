@@ -1,0 +1,30 @@
+{
+  "name": "uumit-recommend",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "requires": {
+    "base_skill": "uumit-agent",
+    "base_version": ">=2.0.0"
+  },
+  "shared_memory": "${UUMIT_SKILL_DIR}/memory/",
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "verify": "node ../uumit-agent/scripts/validate_skill.js",
+    "zip": "uumit-recommend.zip"
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "8b7041b931fe6e10bf2963f39b16a056d8bce02a7d05f496e086444230c74e22",
+      "required": true
+    },
+    "scripts/recommend.js": {
+      "sha256": "4edc20e3c1e0668c58676e47090e379700441cf453ee46ddf9112a6ae11f20b7",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,2 @@
+[console_scripts]
+cli-anything-ljg-ppt-design = cli_anything_ljg_ppt_design.__main__:main

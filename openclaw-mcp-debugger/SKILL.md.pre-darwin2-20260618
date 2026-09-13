@@ -1,0 +1,61 @@
+---
+name: openclaw-mcp-debugger
+description: "Universal adapter diagnostics for Model Context Protocol (MCP). It automatically detects connection issues between agents and external tools, providing deep-trace debugging for the 2026 Agentic Economy."
+metadata:
+  {
+    "openclaw": { "emoji": "🛠️" },
+    "author": "System Architect Zero",
+    "category": "Developer Tools"
+  }
+---
+
+# OpenClaw MCP Debugger
+
+The definitive toolkit for managing complex MCP environments. As AI Agents transition from toys to infrastructure, protocol stability is paramount. This skill provides real-time health checks, latency audits, and automated repair paths for your local MCP servers.
+
+## Features
+- **Protocol Audit**: Deep inspection of MCP handshakes and binary streams.
+- **Latency Tracker**: Measures the round-trip time between your LLM and its tools.
+- **Auto-Fixer**: Automatically restarts crashed MCP servers (e.g., SQLite, Google Search, custom adapters).
+
+## Usage
+```bash
+npx openclaw skill run openclaw-mcp-debugger --all
+```
+
+## Architect's Note
+Operational excellence is the invisible foundation of successful AI Agents. Built for the Sovereign Protocol.
+
+
+---
+
+## 🔴 使用前 CHECKPOINT
+
+启动本 skill 前自问：
+- 🔴 任务范围明确吗？（避免误用）
+- 🔴 输入数据已准备好？（避免半路卡住）
+- 🔴 输出格式清楚吗？（避免返工）
+- 🔴 反例与黑名单扫一遍了吗？（避免重蹈覆辙）
+
+---
+
+## 🚫 反例与黑名单（绝对不要做）
+
+来自达尔文 2.0 通用经验——所有 skill 的绝对禁止反模式：
+
+- 🚫 **不要**为简单任务启用本 skill — 开关成本不划算
+- 🚫 **不要**跳过 🔴 CHECKPOINT — 跳过 = 自残
+- 🚫 **不要**输入未验证的数据 — 先验证后处理
+- 🚫 **不要**为凑进度忽略反例黑名单 — 红线就是红线
+- 🚫 **不要**让单轮改动超过最低维度的 2 倍 — 避免结构破坏
+- 🚫 **不要**用 Edit 工具做"大改" — 优先 Bash append（避免破坏中间）
+- 🚫 **不要**为已废弃的 skill 加新功能 — 先归档再考虑
+
+---
+
+## 📚 References（外部参考）
+
+- **达尔文 2.0** — `~/.claude/skills/darwin-skill/SKILL.md`
+- **huihui-core** — 慧慧核心基础设施
+- **huihui-engineering** — Karpathy + Matt Pocock 工程原则
+- **huihui-writes** — 写作引擎（ljg-writes 改造型）

@@ -1,0 +1,28 @@
+openai:
+  name: ljg-ppt-design
+  display_name: ljg PPT Design
+  description: |
+    PPT design system. Use when the user wants to create, design, or render a PPT/PPTX.
+    Provides 4 design presets, 12 layouts, 4 talk types, and 5-dim quality review.
+  version: 0.1.0
+  capabilities:
+    - ppt
+    - presentation
+    - slides
+    - design
+    - academic
+    - business
+  entry_point: ljg_ppt_design
+  install:
+    pip: "git+https://github.com/HKUDS/CLI-Anything.git#subdirectory=ljg-ppt-design"
+  triggers:
+    - "做一份"
+    - "做 PPT"
+    - "准备演讲"
+    - "presentation"
+    - "slides"
+    - "演讲稿"
+  examples:
+    - "帮我做一份南科大招生宣讲 PPT"
+    - "Prepare a defense for my PhD thesis (academic preset, defense talk type)"
+    - "Make a 10-page business pitch deck"

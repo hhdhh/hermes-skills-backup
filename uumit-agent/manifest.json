@@ -1,0 +1,138 @@
+{
+  "name": "uumit-agent",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "install_entrypoint": "node scripts/install.js",
+    "bootstrap_files": [
+      "manifest.json",
+      "SKILL.md",
+      "scripts/install.js"
+    ],
+    "install_flow": [
+      "fetch manifest.json",
+      "fetch scripts/install.js",
+      "run node scripts/install.js"
+    ],
+    "verify": "node scripts/validate_skill.js",
+    "zip": "uumit-agent.zip"
+  },
+  "install_guide": {
+    "note": "面向宿主 Agent 的权威安装步骤。官网仅给固定极简指令（读本 manifest 并按此执行），详细步骤随本 manifest 发布更新，官网无需改动。呈现给用户时一律用大白话，不暴露内部字段名/命令行/技术术语。",
+    "base_manifest_url": "https://oss.uumit.com/skills/v2/uumit-agent/manifest.json",
+    "extensions": [
+      "uumit-cruise",
+      "uumit-realtime",
+      "uumit-recommend",
+      "uumit-publisher",
+      "uumit-compute",
+      "uumit-social"
+    ],
+    "extension_manifest_url_template": "https://oss.uumit.com/skills/v2/<name>/manifest.json",
+    "steps": [
+      "读取本 manifest.json，按 distribution 指引获取 Skill 包：优先下载 zip；宿主不支持 zip 时按 files 列表逐文件拉取并校验 sha256。下载命令请按你实际所在的运行环境（shell）自行选择，不要写死：在 PowerShell 中，curl 通常是 Invoke-WebRequest 的别名（参数语义不同，curl -o 之类会失败），此时用 Invoke-WebRequest -Uri <url> -OutFile <file> 或 Invoke-RestMethod（若确要用真 curl 则显式调 curl.exe）；在 CMD / Git Bash / WSL / macOS / Linux 中一般有真正的 curl，可用 curl -L <url> -o <file>（或 wget）。核心原则：先判断当前 shell 与可用工具，优先用运行环境的原生 HTTP 下载能力，失败时换另一种方式重试，别硬套单一命令。",
+      "将全部文件持久写入你的全局（用户级）技能目录，每个 Skill 一个独立子目录（如 <你的技能目录>/uumit-agent/；不同宿主目录不同，落到全局技能目录而非临时工作目录或仅当前会话）。基座 uumit-agent 与 extensions 中 6 个扩展一并安装（各扩展入口见 extension_manifest_url_template，安装方式同基座）。安装后确认这些 Skill 已在全局技能列表、重启后仍在。",
+      "运行基座入口命令 install_entrypoint（node scripts/install.js）。它会初始化共享 memory/ 并自动发起 UUMit 设备授权，返回 verification_url 与 user_code；把验证链接与用户码展示给用户并说明在哪里输入。",
+      "用户在浏览器确认后，按 install 返回的 retry_after_seconds 轮询授权结果；授权成功后凭证自动写入本地 memory/uumit-auth.json，无需用户手动粘贴授权码。",
+      "授权完成后：按 install.js 授权成功输出的 onboarding 告知用户已就绪并简述可用能力；若返回 background_tasks，则严格遵循其 agent_hint（首装为征询式尝试开启：不自动开启、整体征询一次、先做预期澄清、征得同意后按 host_tier 尝试登记、成功/失败均如实告知）。这些引导内容由 install.js 运行时动态返回，以其为准。"
+    ],
+    "presentation_discipline": "面向用户全程用中文名与大白话；不暴露内部 id、命令行、字段名（如 suggested_plan/host_tier/schedule/command_abs）、cron/RRULE、文件路径、SSE/轮询等技术术语。用户无需理解 MCP 或 Agent Card。"
+  },
+  "auth_modes": [
+    "short_poll"
+  ],
+  "update": {
+    "verify": "node scripts/validate_skill.js",
+    "preserve": [
+      "memory/"
+    ]
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "5e8d1fa8a86bac4dfb3194e5327086037ec578f6ecfa888c43c230b1d6068ed2",
+      "required": true
+    },
+    "API_REFERENCE.md": {
+      "sha256": "aea3b0bc37429c0fedd80a561dc232200b802f928584a9747b6bd5d0c9f67f1d",
+      "required": true
+    },
+    "PLAYBOOKS.md": {
+      "sha256": "8b52b71192d62676c6cccdb9b418129fde2de9c238bceebc2e68bc96c562da3b",
+      "required": true
+    },
+    "INTEROP.md": {
+      "sha256": "41a70bb6835ec38f6aff1d76f68169214ea16364595f0923197f861794e221a3",
+      "required": true
+    },
+    "SAFETY.md": {
+      "sha256": "fe5de069cc90aa116454767a0256867658ce3b6ff213af124f7d056ea7fb54fa",
+      "required": true
+    },
+    "HOSTS.md": {
+      "sha256": "be23f6842ab856487393880924284495670eddafce87dc95f8b83fb6dec8ec76",
+      "required": true
+    },
+    "TROUBLESHOOTING.md": {
+      "sha256": "46525796f228d886a40a9c1958386cea568eb952d0042974e88f9b1a47cddaac",
+      "required": true
+    },
+    "DEEP_LINKS.md": {
+      "sha256": "b6d1ba15a67e435b0fbd955708239f711ed31771ae283afdddcfbb4e89b87e84",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    },
+    "scripts/install.js": {
+      "sha256": "11df62c0c638c66943c983dfaa99b0854c960142cea7a1f534e75da5c173eb75",
+      "required": true
+    },
+    "scripts/auth.js": {
+      "sha256": "3cd1535f5aae19e68c50b71ef4853098d9331f47f58174dffafb3dd9a713559f",
+      "required": true
+    },
+    "scripts/rest_request.js": {
+      "sha256": "efddfa1e1a0c62e4d617afc81babf9056e4b30631e1453fd130454949a54f14c",
+      "required": true
+    },
+    "scripts/validate_skill.js": {
+      "sha256": "2db68d39d35dac65001a29eeb4c058292786918da6db6a559d86dbab6f795934",
+      "required": true
+    },
+    "scripts/capability_discover.js": {
+      "sha256": "ea426c98d453f56a723660e33a1ab07f59349325281a6ac48fe4118c03e890e1",
+      "required": false
+    },
+    "scripts/capability_index.js": {
+      "sha256": "a2260f93d54aad4fed55dc0c8f0c566c52d50df89115aadba3b7e92d774b2d58",
+      "required": false
+    },
+    "scripts/capability_recommend.js": {
+      "sha256": "5bb455021366542bcd24d1268bfb0288bfa1926e28c41a0903140fa6f20a15e9",
+      "required": false
+    },
+    "scripts/capability_explain.js": {
+      "sha256": "1d9e098db9d4bffbb004fd5b4486cfb1798a8c822f0947dbb5441b08832731c3",
+      "required": false
+    },
+    "scripts/install_hosts.js": {
+      "sha256": "f9192b807ac0dc60cfdd8537367334f9db9a158110c919495d9715351fc40b89",
+      "required": false
+    },
+    "scripts/update_check.js": {
+      "required": false,
+      "sha256": "39aaa772d48418a7e9d901d1681de17d4aaefcb5a837565021b3747860f23b7a"
+    },
+    "CHANGELOG.md": {
+      "sha256": "ddc9896bda1cf8f8b35261e2c6e367194316fdc21280810c787ea5630b9ca357",
+      "required": false
+    },
+    "memory/runtime/agent-autonomy-config.json": {
+      "sha256": "a82cedd1d14f6d9bd65a59af963543b2bba62a78a4edfc2a069a39c4c23d6cf9",
+      "required": true
+    }
+  }
+}

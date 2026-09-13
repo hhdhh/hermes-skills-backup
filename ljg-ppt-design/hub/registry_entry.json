@@ -1,0 +1,33 @@
+{
+  "name": "cli-anything-ljg-ppt-design",
+  "display_name": "ljg PPT Design",
+  "version": "0.1.0",
+  "description": "PPT design system — 4 design presets (academic/consultant/business/tech) × 12 layouts × 4 talk types (conference/business/defense/school) × 5-dim quality review. Outputs DeckSpec JSON; renders to .pptx via python-pptx (default) or HKUDS LibreOffice backend. Lighter than cli-anything-libreoffice (no LibreOffice required). Source: yb2460/harness-anything (WPS section design system) + ljg platform-neutral refactor.",
+  "requires": "Python >= 3.10; python-pptx (default); LibreOffice + HKUDS cli-anything-libreoffice (optional, for cross-platform rendering)",
+  "homepage": "https://github.com/HKUDS/CLI-Anything",
+  "source_url": "https://github.com/HKUDS/CLI-Anything",
+  "package_manager": "pip",
+  "pip_package": "cli-anything-ljg-ppt-design",
+  "install_cmd": "pip install git+https://github.com/HKUDS/CLI-Anything.git#subdirectory=ljg-ppt-design/hub",
+  "skill_md": "https://github.com/HKUDS/CLI-Anything/blob/main/ljg-ppt-design/hub/SKILL_HUB.md",
+  "entry_point": "cli-anything-ljg-ppt-design",
+  "keywords": ["ppt", "design", "presentation", "deck", "academic", "agent-native", "openclaw"],
+  "category": "office",
+  "contributors": [
+    {
+      "name": "ljg-ppt-design contributors",
+      "url": "https://github.com/HKUDS/CLI-Anything"
+    }
+  ],
+  "design_assets": {
+    "presets": ["academic", "consultant", "business", "tech"],
+    "layouts": ["cover", "toc", "overview", "timeline", "grid_cards", "quadrant", "stats", "three_col", "pipeline", "data_table", "content_image", "closing"],
+    "talk_types": ["conference", "business", "defense", "school"],
+    "quality_dimensions": ["visual", "pedagogy", "proofreading", "parity", "substance"]
+  },
+  "backends": {
+    "python-pptx": {"default": true, "requires": "python-pptx>=1.0.0"},
+    "libreoffice": {"default": false, "requires": "libreoffice + HKUDS cli-anything-libreoffice"}
+  },
+  "notes": "Source design system originated in yb2460/harness-anything WPS module (4 preset × 12 layout × 4 talk type). ljg-ppt-design refactored to be platform-neutral (semantic colors → consumed by any renderer). Quality review thresholds follow slide-excellence (visual 70 / pedagogy 75 / proofreading 80 / parity 85 / substance 90)."
+}

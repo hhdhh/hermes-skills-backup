@@ -1,0 +1,30 @@
+{
+  "name": "uumit-realtime",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "requires": {
+    "base_skill": "uumit-agent",
+    "base_version": ">=2.0.0"
+  },
+  "shared_memory": "${UUMIT_SKILL_DIR}/memory/",
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "verify": "node ../uumit-agent/scripts/validate_skill.js",
+    "zip": "uumit-realtime.zip"
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "91b5602373035c13f937f23619f52634f4e189b4e1a0b0f9d2ef4866f24674a2",
+      "required": true
+    },
+    "scripts/runtime_connect.js": {
+      "sha256": "39b0e9901875c607ee9dcb7181b3f6e34c37976abc8858c64377882433b42570",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "launched": {
+    "realtime_poll": "2026-08-14T19:21:47.963Z",
+    "cruise_status": "2026-08-14T19:21:47.963Z",
+    "market_auto_bid": "2026-08-14T19:21:47.963Z",
+    "capability_index_refresh": "2026-08-14T19:21:47.963Z",
+    "update_check_refresh": "2026-08-14T19:21:47.963Z"
+  },
+  "last_reminded_at": "2026-08-14T19:21:47.963Z",
+  "last_choice": "launched"
+}

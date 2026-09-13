@@ -1,0 +1,27 @@
+{
+  "name": "uumit-compute",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "requires": {
+    "base_skill": "uumit-agent",
+    "base_version": ">=2.0.0"
+  },
+  "shared_memory": "${UUMIT_SKILL_DIR}/memory/",
+  "no_scripts": true,
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "verify": "node ../uumit-agent/scripts/validate_skill.js",
+    "zip": "uumit-compute.zip"
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "b84c0521f765713c47f41e4878b5c19b9d7a785fbeb083841a95f1a6aebb5e3c",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    }
+  }
+}

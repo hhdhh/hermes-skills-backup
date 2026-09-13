@@ -1,0 +1,24 @@
+{
+  "ran_at": "2026-09-06T05:00:07.589Z",
+  "status": "refreshed",
+  "env_error": false,
+  "refreshed_count": 614,
+  "changes": {
+    "first_run": false,
+    "since": "2026-09-06T04:00:06.060Z",
+    "added": [
+      {
+        "capability_id": "336a3456-02e3-456d-bf2e-61ce42331cec",
+        "title": "step-3.7-flash"
+      }
+    ],
+    "removed": [
+      {
+        "capability_id": "31103600-e794-4746-822f-a3fdb7577570",
+        "title": "纯GPT共享算力"
+      }
+    ],
+    "added_count": 1,
+    "removed_count": 1
+  }
+}

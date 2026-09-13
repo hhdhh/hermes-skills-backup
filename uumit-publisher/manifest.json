@@ -1,0 +1,30 @@
+{
+  "name": "uumit-publisher",
+  "version": "2.7.0",
+  "base_url": "https://oss.uumit.com/skills/",
+  "requires": {
+    "base_skill": "uumit-agent",
+    "base_version": ">=2.0.0"
+  },
+  "shared_memory": "${UUMIT_SKILL_DIR}/memory/",
+  "distribution": {
+    "preferred": "zip",
+    "fallback": "manifest_files",
+    "manifest": "manifest.json",
+    "verify": "node ../uumit-agent/scripts/validate_skill.js",
+    "zip": "uumit-publisher.zip"
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "ce49d9fd8be7d7fee7801dc3735eb745505eb110446b7cb1fba864965d065a01",
+      "required": true
+    },
+    "scripts/publisher.js": {
+      "sha256": "c31ab311dadc0abeab40c36a6719d3ffc0876ad120edbea1f751a18b87c1f9ef",
+      "required": true
+    },
+    "manifest.json": {
+      "required": true
+    }
+  }
+}

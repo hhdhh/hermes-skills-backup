@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "prompt": "用 Obscura 抓 https://example.com 的 markdown",
+    "expected": "完整可执行的 obscura fetch 命令，含 --dump markdown、--quiet 等必要 flag，输出预期为 markdown 文本",
+    "scenario": "happy path 一次性抓取"
+  },
+  {
+    "id": 2,
+    "prompt": "Obscura 跑批量 10 个 URL 并发抓，输出 JSONL",
+    "expected": "obscura scrape 命令，含 --concurrency、--format jsonl 等等价于批量并发的选项",
+    "scenario": "批量并发场景"
+  },
+  {
+    "id": 3,
+    "prompt": "Obscura 启动 CDP server 9222 然后用 puppeteer 连上去",
+    "expected": "两步：(1) obscura serve --port 9222 后台启动，(2) Node.js 用 puppeteer-core connect 到 ws://127.0.0.1:9222",
+    "scenario": "CDP 调试/集成场景"
+  },
+  {
+    "id": 4,
+    "prompt": "obscura fetch 遇到 403 怎么办",
+    "expected": "明确给出 403 → 加 --stealth 重试 / 检查 OBSCURA_PROXY / 升级到 mavis-browser 三层 fallback，不要含糊建议",
+    "scenario": "错误处理 + 反检测场景"
+  },
+  {
+    "id": 5,
+    "prompt": "moco + Obscura E2E 联调怎么搭",
+    "expected": "完整工作流：moco 起 stub server → Obscura 抓 stub 提供的 HTML 页面（带 JS）→ 验证 stub 返回被渲染到 markdown",
+    "scenario": "跨 skill 联动 + E2E 场景"
+  }
+]
