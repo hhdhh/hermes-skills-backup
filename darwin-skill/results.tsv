@@ -15,3 +15,10 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note	eval_mode
 2026-09-26T12:04	-	autolife-doctor-operations	75.8	78.6	keep	d1	desc补全含中文触发词	dry_run
 2026-09-26T12:04	-	autolife-s2-robox-wizard	81.7	83.5	keep	d4	真动关节加🔴STOP标记	dry_run
 2026-09-26T12:04	-	autolife/autolife-robot-action-ops	81.2	82.4	keep	d6	断链改指action-design真实路径	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-robot-diagnosis	-	89.0	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-dds-split	-	91.2	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-slam-troubleshooting	-	91.2	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-shipment-acceptance	-	91.2	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-ai-action-config	-	91.2	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-shutdown-conditions	-	91.2	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
+2026-09-26T12:53	134ab11	autolife-ops-corpus	-	85.5	baseline	new-pack	dry_run+fallback(盲评503×3);dim8 skipped归一化	dry_run
