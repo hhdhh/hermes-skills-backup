@@ -79,7 +79,7 @@ ROBOX_WEB_AUTO_CONFIRM=1 ROBOX_WEB_SUDO_PASSWORD=xxx python3 robox_combined_y2_w
 6. **S1 vs S2 别混**：服务名（S2 是 vision/arm/gv/rust-web-server/relay/admin）、网段（S2 是 10.x）、conda env 路径都不同。
 7. **Web 前端监听 0.0.0.0**：现场任何连上机器人网络的人都能操控（含 env 注入 sudo）——测试完关掉，注意物理网络安全。
 8. **`clean_subprocess_env()` 剥离 LD_LIBRARY_PATH**：自定义库路径要在 shell 脚本内 source，别依赖外部 env。
-9. **joint_speed_control / robot_reset / 自动化动作会真动关节**：全流程不含它们，必须显式 `--stage`；跑前确认机器人已打胶/复位（脚本内有警告文案）。
+9. **joint_speed_control / robot_reset / 自动化动作会真动关节** 🔴 **STOP——物理动作风险**：全流程不含它们，必须显式 `--stage`；跑前确认机器人已打胶/复位（脚本内有警告文案），无人看护不跑。
 10. **download_packages 依赖现场 Chrome + 飞书扫码**（alist CDP 自动化抓 token 下载 OpenList 包）：纯远程无显示器跑不了，需现场配合。
 11. **`--stage` 传错 key 退出码 2**：合法 key = STAGES 20 个（见上）。
 12. **版本检查走飞书 API/多维表**：`feishu_tenant_access_token` + 版本清单接口，拿 tenant token 失败会降级提示（VersionApiUnavailable 重试 3 次）。

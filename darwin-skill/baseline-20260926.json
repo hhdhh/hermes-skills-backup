@@ -1,0 +1,92 @@
+{
+  "autolife-fae-scheduler": {
+    "dims": [
+      5,
+      8,
+      7,
+      3,
+      9,
+      6,
+      8,
+      8,
+      4
+    ],
+    "total": 71.4,
+    "weakest": "d4"
+  },
+  "autolife-doctor-operations": {
+    "dims": [
+      5,
+      8,
+      7,
+      7,
+      9,
+      8,
+      8,
+      8,
+      6
+    ],
+    "total": 75.8,
+    "weakest": "d1"
+  },
+  "cangjie-skill": {
+    "dims": [
+      8,
+      9,
+      8,
+      7,
+      8,
+      8,
+      8,
+      8,
+      9
+    ],
+    "total": 80.4,
+    "weakest": "d4"
+  },
+  "autolife/autolife-robot-action-ops": {
+    "dims": [
+      7,
+      8,
+      9,
+      7,
+      9,
+      6,
+      9,
+      8,
+      8
+    ],
+    "total": 81.2,
+    "weakest": "d6"
+  },
+  "autolife-s2-robox-wizard": {
+    "dims": [
+      9,
+      8,
+      8,
+      5,
+      10,
+      7,
+      9,
+      8,
+      7
+    ],
+    "total": 81.7,
+    "weakest": "d4"
+  },
+  "autolife-remote-repair": {
+    "dims": [
+      9,
+      9,
+      9,
+      6,
+      10,
+      7,
+      9,
+      9,
+      7
+    ],
+    "total": 87.0,
+    "weakest": "d4"
+  }
+}
