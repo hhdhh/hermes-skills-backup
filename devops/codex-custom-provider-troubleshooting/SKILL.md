@@ -1,7 +1,7 @@
 ---
 name: codex-custom-provider-troubleshooting
 description: Diagnose and repair Codex CLI/Desktop custom OpenAI-compatible provider failures, especially 401/403 authentication errors, wrong Responses API paths, missing Bearer headers, and config/auth drift. Use when Codex reports API_KEY_REQUIRED, Unauthorized, requests /responses instead of /v1/responses, or a custom provider works elsewhere but not in Codex.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Codex Custom Provider Troubleshooting
@@ -36,6 +36,7 @@ Read `~/.codex/config.toml` and identify:
 - `base_url`
 - `wire_api`
 - `requires_openai_auth`
+- `env_key` (when set, Codex reads the key from this environment variable and ignores `auth.json`)
 - optional static/env HTTP headers
 
 For an OpenAI-compatible Responses endpoint, the common shape is:
@@ -73,6 +74,7 @@ Typical ranking for `API_KEY_REQUIRED`:
 3. Codex's stored key differs from the intended provider key.
 4. A profile overlay or `CODEX_HOME` points at another config/auth file.
 5. The gateway expects `x-api-key` rather than Bearer auth.
+6. The block sets `env_key`, so Codex demands that environment variable and ignores `auth.json` entirely — the signature of a distributed team config: the shipped `auth.json` does nothing until the block drops `env_key` and sets `requires_openai_auth = true`.
 
 Test predictions one variable at a time where possible. If both the URL and error body independently prove two defects, fix both together and document why.
 
@@ -116,10 +118,16 @@ If the real request regresses, restore the timestamped backup and re-run the sam
 
 ## Pitfalls
 
+- Before diagnosing auth, check WHICH codex binary runs: an npm-global `@openai/codex` shadows the apt-installed `/usr/bin/codex` because `~/.npm-global/bin` precedes `/usr/bin` in PATH. `which -a codex` first; `npm uninstall -g @openai/codex` to let apt's version take over (config in `~/.codex/` is untouched).
+- Gateway control-plane vs data-plane: if `GET {base_url}/models` returns 200 with a valid key but every completion/images POST returns 503, the gateway is alive and auth is correct — the inference backend is down. Do not edit local config for this.
+- 429 body `group requests-per-minute limit exceeded` (type `rate_limit_exceeded`, with `retry-after`) means a shared group quota is exhausted by other consumers — server-side, not your config. Check the body text; a bare status code cannot distinguish this from a bad-key rejection.
+- One relay, multiple key groups: `GET /v1/models` lists only THAT key's group. A 404 `Model ... is not supported by any configured account in this group` means the key is valid but the model belongs to another group — swap key or model, do not touch base_url/auth flags. Verify a candidate key's group with a 2-token `/v1/messages` or `/v1/responses` curl before editing any client config.
+- Claude Code on an Anthropic-wire relay: `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` alone is not enough — without `ANTHROPIC_MODEL` it requests `claude-sonnet-*` and gets 404 model_not_found on non-Claude relays. Map `ANTHROPIC_MODEL` + `ANTHROPIC_SMALL_FAST_MODEL` (e.g. glm-5.3 / glm-5.3-flash) and verify with `claude -p 'sentinel' --model <m>`; a cosmetic `unrecognized_model` warning about context windows does not block the call.
 - Setting a key in the shell while `requires_openai_auth = false` does not guarantee Codex sends it.
 - A valid key cannot fix a malformed API root.
 - A correct `/v1` path cannot fix a missing Authorization header.
 - Do not infer success from HTTP reachability alone.
+- `warning: Model metadata for <model> not found. Defaulting to fallback metadata` for a non-OpenAI model (e.g. glm-5.3) via a custom provider is benign; treat the real `codex exec` response as the verdict, not this warning.
 - Do not expose credentials in terminal output, patches, reports, or support files.
 
 ## References

@@ -244,3 +244,15 @@ This skill NEVER:
 - `darwin-skill` — SKILL.md 评分（quality）
 - `hermes-gateway-admin` — Hermes 平台层 admin（含 hermes-web-ui / launchd）
 - `workspace-hygiene` — 工作区磁盘 / 长期记忆清理
+
+
+## 补充（patch，审批积压恢复）
+
+# Use the active Hermes/project Python; on PEP 668 Linux, create a venv instead of mutating system Python.
+"$(command -v python3)" -m pip install \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple <pkg>
+
+
+## 补充（patch，审批积压恢复）
+
+4. **安装包必须跟随当前平台环境** — 先确认 `command -v python3`; conda 用该解释器的 `-m pip`，PEP 668 Linux 则新建 venv，不能照抄 macOS `/Users/kk` 路径。

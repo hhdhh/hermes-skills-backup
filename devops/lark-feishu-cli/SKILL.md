@@ -13,7 +13,7 @@ metadata:
 
 # Lark / Feishu CLI
 
-Drive the [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli) (`lark-cli`) from an AI agent. The CLI handles **both** Lark international (`open.larksuite.com`) and Feishu China (`open.feishu.cn`) via a single binary — only the `--brand` flag and the host URL differ. Triggered by: "connect to Feishu", "bind lark to my agent", "set up Lark OAuth", "send a Feishu message from CLI", "configure lark-cli app", "list Feishu calendar events".
+Drive the [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli) (`lark-cli`) from an AI agent. The CLI handles **both** Lark international (`open.larksuite.com`) and Feishu China (`open.feishu.cn`) via a single binary — only the `--brand` flag and the host URL differ. Triggered by: "connect to Feishu", "bind lark to my agent", "set up Lark OAuth", "send a Feishu message from CLI", "configure lark-cli app", "list Feishu calendar events", "把这个总结做成飞书文档", "create a Feishu doc", "save this to Lark".
 
 ## When to use
 
@@ -22,6 +22,7 @@ Drive the [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli) (`lark-
 - Choosing between `bot-only` and `user-default` identity modes (impacts what data the CLI can touch)
 - Translating an open platform app config (`App ID` + `App Secret`) into a working CLI binding
 - Verifying the bind works after a token rotation or app re-publish
+- Creating, updating, and fetch-verifying rich Feishu Docx manuals or SOPs; use `references/docx-authoring-verification.md`
 
 **Do not use** for building Feishu apps themselves (this skill is for *consuming* the API). For app creation, go to https://open.feishu.cn/app (CN) or https://open.larksuite.com/app (international) in the user's browser.
 
@@ -180,7 +181,68 @@ before firing raw `api GET /open-apis/...` calls. Risk tier per call shows in `-
 
 `lark-cli config init --brand feishu` is default. For international: `--brand lark`. The choice affects which open-platform URL the CLI contacts (`open.feishu.cn` vs `open.larksuite.com`).
 
+### P10: Creating a Feishu doc from a local `.md` file (the easy way)
+
+For "send this markdown to a Feishu doc" (the common ask), the working flow is:
+
+```bash
+# Create from stdin (relative path required for @file; absolute is rejected)
+cat /path/to/local.md | lark-cli docs +create \
+  --as user \
+  --doc-format markdown \
+  --title "文档标题" \
+  --content -
+```
+
+Two important constraints hit in practice:
+- `--content @/abs/path.md` **fails** with "must be a relative path within the current directory". Workaround: pipe via stdin with `--content -`. The CLI hint literally says "this flag also reads stdin".
+- After create, the response is `data.document.document_id` and `data.document.url`. Save both. The URL is `https://<brand-host>/docx/<document_id>` where brand-host is `autolife.feishu.cn` (Feishu CN) or `larksuite.com` (Lark intl).
+
+### P11: Updating an existing Feishu doc (full overwrite is the cleanest)
+
+For replacing an entire existing doc (typical when the local source was edited):
+
+```bash
+cat /path/to/local.md | lark-cli docs +update \
+  --as user \
+  --doc-format markdown \
+  --doc "<document_id_or_url>" \
+  --command overwrite \
+  --content -
+```
+
+The URL returned stays the same — `overwrite` rewrites content, not the document identity. The response shows `revision_id` incrementing (e.g. 5 → 10 after several edits).
+
+`overwrite` discards unrelated rich content in the doc. If you need targeted edits, use `str_replace` or `block_replace` (see `--help` of `+update`).
+
+### P12: Doc ops need `user` identity, not `bot`
+
+If you only see `bot: ready` in `lark-cli auth status` and `user: missing`, then:
+- `docs +create` may succeed but the doc is created in the bot's space (not visible to the user).
+- `docs +update` on a user-owned doc will likely fail with permission errors.
+
+Always run `lark-cli auth status` first; if `user.identity.status == "missing"`, complete the device-flow login (P4) BEFORE attempting any doc operation.
+
 ## Reference recipes
 
 - `references/oauth-device-flow-handoff.md` — exact end-to-end sequence (script with `--no-wait --json` URL extraction, QR generation, then `--device-code` polling)
 - `references/identity-mode-decision.md` — when to recommend `bot-only` vs `user-default` to the user, with scope-mapping examples
+- `references/document-authoring-and-verification.md` — long-form Docx workflow: inspect, revision-guarded write, Feishu read-back, structural/content checks, safety-document checklist
+- `references/cross-resource-release-discovery.md` — resolve Doc citations into version-authority Sheets, search Drive/IM for approved artifacts, and keep human Feishu credentials off target machines
+
+## Send a markdown file to a Feishu doc — the minimal recipe
+
+```bash
+# 1. Make sure user identity is ready (else docs end up in bot's space)
+lark-cli auth status | grep -A1 '"user"'
+
+# 2. Pipe the local .md into +create
+cat /path/to/local.md | lark-cli docs +create \
+  --as user --doc-format markdown \
+  --title "标题" --content -
+
+# 3. Capture document_id from response: data.document.document_id
+# 4. Later edits: same shape but +update --command overwrite
+```
+
+The skill's full doc-create/update details are in pitfalls P10–P12.

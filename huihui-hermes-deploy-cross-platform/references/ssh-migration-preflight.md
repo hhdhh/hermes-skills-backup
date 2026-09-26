@@ -106,3 +106,51 @@ New-NetFirewallRule -Name sshd -DisplayName "OpenSSH SSH Server" -Enabled True -
 ## 2026-09-06 示例（已去除凭证）
 
 最初目标地址位于不同网段，路由经默认 Wi-Fi 网关，Ping 和 22 都超时。用户纠正为同网段地址后 Ping 成功、Hermes Web UI 端口可达，但 22 返回 `Connection refused`。结论是目标 Hermes 已运行、SSH 未开启；应先启用 SSH，而不是继续排查密码或重新安装 Hermes。
+
+## NetBird：WireGuard 上的远程登录预检
+
+NetBird 把 SSH 套在 WireGuard overlay 之上（管理面 + 数据面），所以同样的“三件事拆开验证”要换成 NetBird 自己的层：
+
+```bash
+# 1. 本机 netbird daemon 在线 & 加入了正确的 management
+netbird status
+
+# 2. 本机与你直连的 peer 数 vs 在线总数
+netbird status | grep "Peers count"
+# 例：Peers count 3/167 Connected
+#     X/167 中 X 远小于总数 = 你没和大多数 peer 建立 WireGuard 直连（含目标机器）
+
+# 3. 目标机器的 SSH server 是否启用
+netbird ssh <user>@<host>            # 报 SSH server detection failed = 默认 Disabled
+netbird status | grep "SSH Server"   # 本机状态字段同上，验证默认行为一致
+
+# 4. FQDN 解析（mDNS 由 netbird daemon 代理）
+getent hosts <host>                                      # 系统 DNS 查不到 .selfhosted 域是预期
+netbird ssh <user>@<host>.netbird.selfhosted             # 走 daemon 解析
+```
+
+### 输出判定
+
+| 结果 | 含义 | 下一步 |
+|---|---|---|
+| `netbird status` 本机 Connected，但 `Peers count 3/167 Connected` 且目标不在 3 之列 | 你与目标机器未建立 WireGuard 直连隧道；WireGuard 是按需 lazy connection，需要目标机器的 daemon 也跑着且两个 peer 都被同 management 授权 | 在目标机器确认 `netbird status` + 同 management；若是，需要授权侧检查 ACL/group |
+| `netbird ssh ...` 报 `SSH server detection failed` 或 `SSH Server: Disabled` | 目标机器 netbird SSH server 没开（这是默认安全策略，不是 bug） | 在目标机器执行 `sudo netbird ssh-server enable` 然后 `sudo systemctl restart netbird`（macOS：`brew services restart netbird`） |
+| `netbird ssh <user>@<host>` 报 `lookup ... server misbehaving` | 系统 DNS 127.0.0.53 不转发 `.selfhosted`，但 netbird daemon 在用 mDNS；通常是 daemon 没在跑或 peer 未在线 | 先看本机 daemon 状态、再确认目标机器也在线 |
+| `netbird ssh` 输入了密码仍 Permission denied | SSH server 已开，但目标 netbird daemon 上的用户白名单不含这个用户名 | `netbird ssh-server users list`（目标端）添加；或换已授权的用户名 |
+| mDNS / SSH 都通了 | 才进入凭证、密钥、配置推送 | 走正常 SSH 路径，凭证策略同上 |
+
+### 凭证安全（NetBird 同样适用）
+
+- 涉及 API key / token / 私钥的远端配置推送，**必须先确认主机身份和用户名**，再考虑写入。WireGuard 把所有 peer 都路由到同一 overlay，DNS / mDNS 解析错了会把凭证写到错误机器——而日志里只能看到"成功了"。
+- 不要把密码喂给 `netbird ssh` 的 stdin 脚本化回放；走交互或已经预置的 SSH 密钥。
+- 写配置前先 `netbird ssh <user>@<host> 'hostname && id'` 验明身份，这是写入操作前的最后一道闸。
+
+### 与传统 SSH 的取舍
+
+- NetBird 优势：跨 NAT / 跨家庭网络无配置；自带管理面板审计 peer 状态。
+- NetBird 劣势：默认 lazy connection + 默认 SSH server Disabled → 首次配对必须双方手动确认，比传统 SSH 多一步。
+- 已有传统 SSH（LAN / Tailscale / 公网直连）的场景不必为了一次配置切到 NetBird——一次性配置不值这个预检成本。
+
+## 2026-09-14 NetBird 示例（已去除凭证）
+
+用户说"用 netbird 连接到 faeljwj-gdh-x 给那台电脑的 Codex 配置 SUB2API key"。本机 netbird 在线（kk-gdh-x.netbird.selfhosted），但 `Peers count 3/167 Connected`，`netbird ssh ...` 三种写法都失败。原因不是 DNS，也不是密码——而是两件事叠加：目标机器不在 3 个直连 peer 之列（需要目标机器 netbird daemon 在线 + 同 management 授权），且 netbird SSH server 默认 Disabled。正确动作：让用户在目标机器跑 `sudo netbird ssh-server enable` + 重启 daemon，而不是猜密码或继续重试。**API key 全程未写入任何文件。**

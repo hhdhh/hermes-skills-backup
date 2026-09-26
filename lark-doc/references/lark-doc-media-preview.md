@@ -34,6 +34,13 @@ lark-cli docs +media-preview --token "Z1Fjxxxxxxxx" --output ./asset.png
   - 图片：`<image token="..." .../>`
   - 文件：`<file token="..." name="..."/>`
 
+## 本地批量缓存核验
+
+- 按素材 token 去重、并发限制为 2；已有文件不要覆盖，使用相对输出路径和 `--as user`。
+- 检查 CLI 返回的 `data.saved_path` 或同时匹配无后缀 token 文件与 `token.*`；`application/octet-stream` 可能保存为无扩展名的有效 PNG，不能仅凭缺少扩展名判失败或重复下载。
+- 缓存成功后用本地图片库校验格式、尺寸、字节数及摘要，并保留来源文档/块映射。二进制校验不等于图中文字核实；没有可用本地 OCR/视觉能力时，明确记录像素未审查，不能把 alt 当原图转录。
+- 画板仅通过 `+media-download --type whiteboard` 缓存缩略图；缩略图不代表完整节点内容。
+
 ## 参考
 
 - [lark-doc-fetch](lark-doc-fetch.md) — 获取文档内容（用于提取 token）

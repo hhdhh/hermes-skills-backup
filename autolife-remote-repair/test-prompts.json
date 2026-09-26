@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "prompt": "ssh 到 402 看看什么问题",
+    "expected": "定位 402 的 IP(autolife-find-robot)，SSH 直连，诊断流程，输出结论"
+  },
+  {
+    "id": 2,
+    "prompt": "把 309 的 settings.toml 拉回来给我看看",
+    "expected": "ssh pull + md5 校验，落到本地 workspace 展示内容"
+  }
+]

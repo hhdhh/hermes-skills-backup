@@ -12,7 +12,7 @@ description: 在现场内网快速定位 AutoLife 机器人：DNS PTR 反查法�
 ## 核心认知：机器人按机号识别，IP 动态解析
 
 - 机器人 hostname 格式：`autolife-robot-<机号>`（如 `autolife-robot-294`），机号 = hostname 数字后缀。
-- 机器人 IP 是 DHCP 的，**写死必失效**。定位分两层：
+- 机器人 IP 是 DHCP 的，**写死必失效**。唯一例外：**网线直连（lan0）时全机队统一 192.168.10.2**——接哪台就是哪台，不代表机器身份，连上先 `hostname` 验明是哪台（2026-09-18 主人明确；S2 装机向导静态配的 lan0 地址）。定位分两层：
   1. **快找（秒级）**：DNS PTR 反查 —— ping 填邻居表 → `dig @网关 -x IP` → hostname 含 `autolife` 即机器人。**不需要 SSH 凭证**。
   2. **深查（兜底）**：`robssh.py scan` —— SSH 连上读 hostname。慢但能确认 SSH 可达性 + 抓到 PTR 缺失的机器。
 - 两种方法结果都会写进 `~/.hermes/workspace/robots.json` 的 `_resolved`（机号→IP），后续 `robssh.py <机号> <命令>` 直接用。

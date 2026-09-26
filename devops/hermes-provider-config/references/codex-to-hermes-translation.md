@@ -44,12 +44,19 @@ cfg['fallback_providers'] = [{
 save_config(cfg)
 "
 
-# 3. Optional alias for direct selection
-hermes config set model.aliases.autolife-gpt55 \
-  "provider: custom
-model: gpt-5.5
-base_url: https://sub2api.autolife-robotics.com/v1
-key_env: SUB2API_AUTOLIFE_API_KEY"
+# 3. Optional alias for direct selection (note: top-level `model_aliases`, NOT `model.aliases`)
+python3 -c "
+import sys; sys.path.insert(0, '/home/kk/.hermes/hermes-agent')
+from hermes_cli.config import load_config, save_config
+cfg = load_config()
+cfg.setdefault('model_aliases', {})['autolife-gpt55'] = {
+    'provider': 'custom',
+    'model': 'gpt-5.5',
+    'base_url': 'https://sub2api.autolife-robotics.com/v1',
+    'key_env': 'SUB2API_AUTOLIFE_API_KEY',
+}
+save_config(cfg)
+"
 ```
 
 ## Field-by-field translation

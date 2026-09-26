@@ -1,0 +1,5 @@
+name: autolife-knowledge
+description: >
+  Query the Autolife knowledge base for robot, product, and documentation context.
+  Two modes: a token-authenticated public gateway (no VPN needed, set KB_API_TOKEN)
+  and an internal NetBird + AstrBot mode for full read/write access.

@@ -19,6 +19,7 @@ Install + configure system packages on Ubuntu/GNOME/Wayland where the user owns 
 - User asks to install a desktop system package (input method, fonts, codecs, system service) that needs `sudo apt install`
 - After install, configuration touches user-space (`gsettings`, `~/.config/autostart/`, dconf)
 - Environment is GNOME Wayland or X11 with a normal user session
+- User asks to turn one or more Ubuntu/Linux robot or appliance field manuals into a safe, selectable provisioning/configuration tool. For that class, also load `references/robot-provisioning.md` for source tracing, manual/automatic boundaries, rollback, diagnostics, and acceptance rules.
 
 ### 0. Sanity check: where is the keyboard event actually going?
 
@@ -48,7 +49,13 @@ ibus list-engine | grep -i pinyin
 
 If A shows `GTK_IM_MODULE=fcitx` and `pgrep fcitx5` is empty, **fix A first** — see P2 and P25. Don't burn time investigating terminal protocol issues until IM_MODULE is correct.
 
+## Related references
+
+- For GNOME Boxes/KVM VM creation, visibility, verification, and safe deletion, read `references/gnome-boxes-libvirt.md` before choosing a libvirt connection scope.
+
 ## Core workflow
+
+For Ubuntu Desktop guests using KVM/libvirt and GNOME Boxes, load `references/gnome-boxes-vms.md` before acting. It covers host checks, official ISO verification, the critical `qemu:///session` vs `qemu:///system` visibility rule, creation, verification, and safe deletion.
 
 ### 1. Detect before recommending
 
@@ -58,6 +65,7 @@ Before installing, always inspect what's already there. Saves the user from rein
 # What's installed and what binary is on PATH
 dpkg -l 2>/dev/null | grep -iE "<relevant pattern>"
 which <binary>
+<binary> --version 2>/dev/null | head -1    # see pitfall P26 — version age matters
 
 # User vs system IM/UI state
 gsettings get org.gnome.desktop.input-sources sources 2>/dev/null
@@ -69,7 +77,21 @@ ls ~/.config/autostart/ 2>/dev/null
 ls /etc/xdg/autostart/ | grep -iE "<pattern>"
 ```
 
-For input methods specifically: check `ibus list-engine` **after** a daemon restart — see pitfall P1.
+For input methods specifically: check `ibus list-engine` **after** a daemon restart — see pitfall P1. For arbitrary CLI tools the user names ("install rclone", "装个 ffmpeg"), check `<binary> --version` against the upstream current — if the existing install is multiple years old, surface "skip / upgrade / reinstall" as a choice before deciding (P26).
+
+### 1a. For autostart `.desktop` files: verify the `Icon=` path actually exists
+
+Don't guess the icon path. AppImages often ship their icon at the squashfs-root top level (`squashfs-root/Foo.png`), not in `usr/share/pixmaps/`. Before committing the `Icon=` line in a `.desktop` file:
+
+```bash
+# Conventional location first
+ls /path/to/app/squashfs-root/usr/share/pixmaps/ 2>/dev/null
+# Fallback: shallow search of the extracted AppImage root
+find /path/to/app/squashfs-root -maxdepth 5 -iname '<appname>*' \
+    | grep -iE 'icon|pix|svg|png' | head -10
+```
+
+`desktop-file-validate` only catches syntactic problems (key names, value types) — a path that simply doesn't exist is **not** flagged, and GNOME silently falls back to a generic icon. Observed with Snipaste 2.11.3 (Aug 2026): only `squashfs-root/Snipaste.png` exists; `squashfs-root/usr/share/pixmaps/` is empty. Always verify the file before writing the desktop entry.
 
 ### 2. Decide install vs user-action
 
@@ -81,6 +103,35 @@ Single command:
 ```bash
 sudo apt install -y <packages>
 ```
+
+#### Network-aware installation fallback (APT repositories vs release scripts)
+
+For third-party software whose official install script resolves/downloads release assets from GitHub, first test the actual endpoints from the user's machine. A reachable vendor repository does not imply that `github.com` is reachable. If the install script fails on GitHub, prefer the vendor's official APT repository rather than retrying the same script or using an unverified mirror.
+
+For NetBird on Ubuntu/Debian, the tested official fallback is:
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+curl -4 --fail --show-error --location https://pkgs.netbird.io/debian/public.key \
+  | sudo gpg --dearmor --output /usr/share/keyrings/netbird-archive-keyring.gpg
+echo 'deb [signed-by=/usr/share/keyrings/netbird-archive-keyring.gpg] https://pkgs.netbird.io/debian stable main' \
+  | sudo tee /etc/apt/sources.list.d/netbird.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y netbird
+```
+
+On Ubuntu 24.04+ amd64, the optional NetBird desktop UI additionally needs:
+```bash
+sudo apt-get install -y netbird-ui libgtk-4-1 libwebkitgtk-6.0-4 xdg-utils
+```
+Enable and verify the service after installation:
+```bash
+sudo systemctl enable --now netbird
+command -v netbird
+netbird version || netbird --version
+systemctl is-active netbird
+```
+Keep the repository installation additive: do not purge or replace existing networking software unless explicitly requested. For a user-side handoff, put the full sequence and `set -Eeuo pipefail` error trap in one `/tmp/install-<name>.sh` script; do not hand over only a bare one-liner.
 
 ### 4. Configure user-space
 
@@ -169,7 +220,7 @@ ibus engine <engine-name>                                     # daemon-side swit
 ```
 Then verify with `ibus engine` (no args) — it prints the active engine. Only trust this output, not `current`.
 
-### P8: `sources` array indices are positional
+**P8: `sources` array indices are positional**
 The `sources` array is ordered. Index `N` = `sources[N]`. If the array is `[('xkb','us'), ('ibus','libpinyin'), ('ibus','pinyin')]`, then:
 - `current=0` → us (English)
 - `current=1` → libpinyin
@@ -177,11 +228,42 @@ The `sources` array is ordered. Index `N` = `sources[N]`. If the array is `[('xk
 
 When adding/removing an engine, re-count the indices before setting `current`. Misalignment here is silent — `gsettings set` accepts any uint32.
 
+**P8b: after a script handoff, answer the literal question — don't re-explain the script**
+When the user has been handed a self-contained script (the "Driver pattern" above) and asks a targeted follow-up — "只改这一行就行?" / "在 Win 端要改什么?" / "脚本要 sudo 吗?" — they have **already read the script**. They are confirming the diff before editing, not asking to be re-taught.
+
+The wrong response: re-summarize the script's structure, repeat the three parameters, re-list the steps, and offer to make the edit for them. That's a 300-token answer to a 5-token question and signals the agent doesn't trust the user to read.
+
+The right response: answer the literal question, optionally a one-line callout of the one parameter that matters most, and stop. If the user needs more, they'll ask.
+
+Recognized pushback phrases (these are explicit "stop hand-holding" signals, treat them as the question being only the words they typed):
+- "不用了我自己来" — drop the menu of options, just give the one answer
+- "告诉我在脚本里要改什么" / "改哪行" — list the diff, nothing else
+- "直接说" / "简短点" — collapse the response to the essential fact
+
+This applies to any handoff pattern: rclone uploads, install scripts, config edits, anything where the user has the file in front of them. See `rclone-cloud-storage` P11 for the parallel pitfall captured in that skill.
+
 ## Reference recipes
 
 - `references/input-methods.md` — full ibus install + engine selection + cleanup recipe (worked example: ibus-pinyin on Ubuntu 26.04 GNOME Wayland, Aug 2026). Also covers the old-`.deb` + current-Ubuntu path (fcitx-baidupinyin 1.0.1 / 搜狗 4.2.1 era) with the dpkg `--force-depends` recovery sequence for the `iU` lock state.
 - `references/macos-theming.md` — full macOS-style desktop install + driver updates recipe (WhiteSur theme + SF Pro/SF Mono fonts + Blur My Shell + Ptyxis dark palette + Firefox WhiteSur + Plank + Ulauncher launcher, Ubuntu 26.04 GNOME Wayland, Aug 2026). Covers 7 phases from user-space downloads through gdm re-login. Includes the gnome-background-properties XML template, Ptyxis palette preset list, and the persist.sh pattern for P15.
 - `references/macos-rounded-corners.md` — Phase 8 addendum: explicit corner-radius + vibrancy recipe for the panel, dock, Plank, and GTK 4 libadwaita apps. The single biggest "this looks like macOS now" change beyond the theme itself. Also captures GNOME 50 key-removals (no `enable-appmenu`), Ptyxis `cursor-shape` enum, and Ulauncher autostart `--hide-window` flag.
+- `references/wine-installers.md` — validation and wrapper patterns for running Windows GUI installers through distro-packaged Wine, including Debian/Ubuntu `wineserver` discovery and propagation into `winetricks`.
+
+## Local desktop application archives (tar.gz)
+
+Use this workflow when the user provides a local `.tar.gz`/`.tar.xz` desktop application archive and asks to install it. Treat "install" as a user-space installation unless the vendor explicitly requires system integration; do not run the vendor's disk-writing or device-modifying command without identifying the target and getting explicit confirmation.
+
+1. Inspect before extracting:
+   - verify the archive exists and record its size;
+   - list the first entries with `tar -tzf`/`tar -tJf`;
+   - read the bundled README and locate the actual GUI binary, CLI scripts, version file, and icon assets;
+   - check for an existing installation/launcher so updates are additive and intentional.
+2. Install to a stable user directory such as `~/应用/<name>-<version>` (or the user's established application directory), creating parent directories before extraction. Replace only that application's destination, never an unrelated directory.
+3. Add a user launcher under `~/.local/bin/` with `ln -sfn` to the verified executable. Create a `.desktop` entry under `~/.local/share/applications/`, using an icon path that was confirmed to exist in the archive. Run `update-desktop-database` when available, but do not make it a hard dependency.
+4. Verify the version, executable bit, symlink target, desktop-entry fields, and dynamic libraries with `ldd`; separately verify vendor scripts are executable. A GUI binary's `--help` may launch the GUI and block instead of printing help—never use an unbounded GUI launch as the primary verification. If probing it, use a timeout, capture output, and clean up the process; prefer non-GUI checks for the acceptance test.
+5. Report the exact install path and launch command. If an operation would write a USB/disk or otherwise destroy data, stop before that operation and ask for the exact target device and confirmation.
+
+This archive-install pattern is intentionally user-space and does not require sudo; if system dependencies are missing, use the self-contained sudo handoff pattern below rather than guessing credentials.
 
 ## Driver updates: theme packs, fonts, extensions, wallpapers
 
@@ -217,7 +299,21 @@ echo "请运行: bash /tmp/install-step-N.sh"
 
 ### Pitfalls specific to user-space driver installs
 
-**P9: GNOME extensions are not visible until re-login**
+**P27: macOS Tahoe theme (GNOME 50) — 3 upstream bugs to fix post-install**
+Replaced WhiteSur with GNOME-macOS-Tahoe (kayozxo, macOS 26 style) on Ubuntu 26.04/GNOME 50.1, Sep 2026. Kept WhiteSur icons/cursors. Fixes needed after `./install.sh --install-dark -la`:
+1. dart-sass missing from 26.04 apt → user-space install: `dart-sass-<v>-linux-x64.tar.gz` from GitHub releases (ghfast.top proxy if direct stalls) → `~/.local/opt/dart-sass` + symlink `sass` to `~/.local/bin`.
+2. **`-la` writes broken relative imports** `@import '../gtk-3.0/libadwaita.css'` into `~/.config/gtk-4.0/gtk.css` — resolves against the config dir, so libadwaita apps silently stay default-themed. Rewrite to absolute paths `/home/<u>/.themes/Tahoe-Dark/gtk-3.0/libadwaita*.css` and re-append `@import 'gtk-overrides.css'` (rounded corners). Verify each import target exists programmatically.
+3. **GTK3 journal spam** (27× "Theme parsing error" on switch): theme's `gtk-3.0/gtk.gresource` bundles GTK4-only props (`-gtk-icon-size`, `border-spacing`) in BOTH `/org/gnome/theme/gtk.css` AND `gtk-dark.css`. Fix: `gresource extract` both, sed-delete those lines, rebuild via `glib-compile-resources --sourcedir=<staging> gresources.xml` (there is NO `gresource compile` subcommand in glib 2.88). Verify `gresource list | wc -l` = 203 and extract-grep = 0.
+4. Journal line numbers for GTK3 warnings point into the imported 353KB `libadwaita.css`, not the 1-line `gtk-dark.css` — don't chase the wrong file.
+5. Backup first: `~/backup/theme-switch-<date>/` ← `~/.config/gtk-4.0` copy + `dconf dump` interface/user-theme + original gtk.gresource. Rollback: restore + `gsettings set org.gnome.desktop.interface gtk-theme 'WhiteSur-blue'` + user-theme `'WhiteSur-Dark-blue'`.
+
+**P28: gsettings wallpaper — one wrong URI silently resets to ~/.config/background**
+`gsettings set org.gnome.desktop.background picture-uri file:///path/that/does/not/exist` triggers GNOME's fallback: the key silently reverts to `file:///home/<u>/.config/background` (a real JPEG file, not a symlink). Looks like "some daemon is fighting my gsettings" but isn't — it's self-inflicted. Always verify path exists BEFORE setting; then re-read the key 3-4s later to confirm it stuck. For light/dark auto-switch set BOTH `picture-uri` (light) and `picture-uri-dark` (dark); follows `color-scheme` automatically.
+
+**P29: macOS dock presets on dash-to-dock (GNOME 50, Ubuntu 26.04)**
+- Floating capsule (author intent, styled by theme CSS `#dash .dash-background` border-radius 28px): `extend-height false`, `transparency-mode 'FIXED'`, `background-opacity 0.35`, icon 48, indicator DOTS + blur-my-shell `dash-to-dock/style-dash-to-dock 1` sigma 30.
+- Full-width bar: `extend-height true` + `height-fraction 0.90` + opacity 0.40. Theme has dedicated `#dashtodockContainer.bottom.extended` CSS (square corners + 1px top highlight inset) — do NOT add custom CSS for this, it's built in.
+- Theme's shell CSS also sets panel height 40px and macOS-style show-apps icons; no extra extension needed.
 `gnome-extensions list --user` returns empty for any extension you just deployed to `~/.local/share/gnome-shell/extensions/`. The shell scans that directory **once at session start**. Two options:
 - Run `gnome-extensions enable <uuid>` only **after** the user has logged out and back in once. The tool will still say "does not exist" before that — that's expected, not a bug.
 - Tell the user to log out and back in after the user-space deploys, BEFORE running the `enable` step.
@@ -234,6 +330,9 @@ This bit me on Blur My Shell — the extension was "enabled" but the schema was 
 
 **P11: extension metadata.json from `.json.in` template**
 GNOME's official extensions repo (e.g. `GNOME/gnome-shell-extensions`) ships `user-theme/metadata.json.in` with placeholders like `@uuid@`, `@shell_current@`. You must construct a real `metadata.json` with the actual values before deploying. The current UUID for User Themes is `user-theme@gnome-shell-extensions.gnome.org` (was `...gcampax.github.com` historically). Build the JSON by hand — don't try to templatize it.
+
+**P30: WhiteSur GDM theme install (Ubuntu 26.04, GNOME 50)**
+Needs sudo + sassc. (1) Manual triple-backup of BOTH `/usr/share/gnome-shell/gnome-shell-theme.gresource` AND Ubuntu's real GDM file `/usr/share/gnome-shell/theme/Yaru/gnome-shell-theme.gresource` + md5 verify FIRST. (2) `COLOR_VARIANTS="-dark" sudo -A bash tweaks.sh -g -b default -nb -nd --silent-mode` — flags are SHORT (`-nb`/`-nd`, not `--noblur`); `sudo -E` is rejected, export vars in same shell. (3) Installer auto-`.bak`s both files itself. Verify: `gresource extract` Yaru gresource → `background.png` avg color BigSur-ish + login buttons 8px radius. Effect at next logout/reboot (greeter reload), not live. Rollback = restore `.bak`s. sudo via SUDO_ASKPASS script reading `SUDO_PASSWORD` from `~/.hermes/.env`, `shred -u` after.
 
 **P12: `gnome-extensions enable` without a session**
 The `gnome-extensions` CLI talks to the active session via D-Bus. If `gnome-shell` is not running in the agent's session (you're a non-interactive shell), the tool can't enumerate user extensions and will report "extension does not exist" even when the directory is correct. This is the same P9 root cause. Verify by checking `ps -ef | grep gnome-shell` — if the agent is running under a different user/session, the deploy is correct; the user just needs to re-login.
@@ -380,14 +479,44 @@ For native Wayland apps this is unnecessary. For mixed-mode Qt apps, the `waylan
 
 Verify it worked: `ls -la /proc/<pid>/exe | grep <appname>` should resolve to the binary, and there should be no `qt.qpa.xcb: could not connect` in stderr.
 
-**P24: GitHub releases direct download is slow from CN — use `gh-proxy.com` mirror**
-Direct `curl https://github.com/.../release-X.Y.Z/foo.AppImage` from a CN network can run at ~50 KB/s (3 minutes for 5 MB, often times out before 30 MB completes). The agent sees `speed_download ≈ 50000 B/s` and exits 124 on the timeout. Two reliable mirrors that mirror github.com releases without auth:
-- `https://gh-proxy.com/https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>`
-- `https://ghfast.top/https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>`
+**P24: GitHub releases direct download is slow from CN — use mirrors in this priority order**
+Direct `curl https://github.com/.../release-X.Y.Z/foo.AppImage` from a CN network can run at ~50 KB/s (3 minutes for 5 MB, often times out before 30 MB completes). The agent sees `speed_download ≈ 50000 B/s` and exits 124 on the timeout. Priority order — try the cheapest first:
 
-Both proxy through Cloudflare's SIN edge (latency ~30ms from CN). Observed speeds: 2.2 MB/s for a 30 MB Wox AppImage (13 seconds vs 600+ seconds). `gh-proxy.net` is unreliable (often redirects to survey pages) — skip it.
+1. **Official Cloudflare / vendor-hosted mirror** (best, no proxy needed). Many open-source projects (Hermes Studio, etc.) mirror release assets to `https://download.<vendor-domain>/v<tag>/<asset>` or similar. The download page's "Cloudflare Download" button is the canonical hint. **Grep the project's download page HTML for `download.<vendor-domain>` URLs** — the JS-rendered page hides them from `curl`, so use browser_exec to extract them.
+2. **`https://ghfast.top/https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>`** (reliable, ~2.2 MB/s from CN).
+3. **`https://gh-proxy.com/https://github.com/...`** (older alternative; sometimes flaky).
+4. Direct GitHub last — often times out for files >100 MB.
 
-Note this only applies to **release assets**, not arbitrary GitHub URLs. Code raw.githubusercontent.com direct works fine.
+Both proxies route through Cloudflare SIN edge (latency ~30ms from CN). `gh-proxy.net` is unreliable (often redirects to survey pages) — skip it. Note this only applies to **release assets**, not arbitrary GitHub URLs. Code raw.githubusercontent.com direct works fine.
+
+**P26: preflight third-party `.deb` installs before asking for sudo**
+
+For desktop apps distributed through GitHub Releases, complete every non-root step first so the user only has to run one sudo-bearing script:
+
+1. Query the official GitHub Releases API and select the asset matching `dpkg --print-architecture` (`amd64` usually maps to an `x86_64` filename).
+2. Download from the official asset URL; on slow CN routes, apply the P24 release-asset proxy.
+3. Verify the release API's `digest` with `sha256sum -c -` before installation.
+4. Inspect package identity and dependencies with `dpkg-deb -f <file> Package Version Architecture Depends` and confirm a desktop entry exists with `dpkg-deb --contents`.
+5. Put `sudo -v`, `apt-get update`, `apt-get install -y ./package.deb`, and post-install readback checks into one self-contained script. Prefer `apt-get install ./package.deb` over bare `dpkg -i` because apt resolves dependencies in the same transaction.
+6. After installation, verify the exact package state and version with `dpkg-query -W`, and verify the installed `.desktop` file/`Exec=` entry. Do not claim the GUI is installed merely because the download and preflight passed; installation is complete only after the user runs the sudo script and these readbacks succeed.
+
+On newer Ubuntu releases, a third-party package may depend on an old pre-t64 name such as `libgtk-3-0`, while the archive installs `libgtk-3-0t64`. Before treating this as missing, inspect the replacement package with `apt-cache show`; a line such as `Provides: libgtk-3-0` means apt can normally satisfy the dependency. Avoid rewriting the `.deb` or force-installing it unless an actual apt transaction proves the virtual dependency cannot be resolved.
+
+**P26: distro Wine may install `wineserver` outside `PATH`**
+
+On Debian/Ubuntu multiarch Wine packages, `wine` and `wineboot` may be in `/usr/bin` while `wineserver` is only under `/usr/lib/<triplet>/wine/wineserver`. A wrapper that calls bare `wineserver -w` then aborts even though Wine itself initialized correctly. Discover it from the installed package and export the result because `winetricks` performs its own `wineserver` lookup:
+
+```bash
+WINESERVER="$(command -v wineserver || true)"
+if [ -z "$WINESERVER" ]; then
+    WINESERVER="$(dpkg -L wine64 2>/dev/null | grep '/wineserver$' | head -n 1 || true)"
+fi
+[ -x "$WINESERVER" ] || { echo 'Wine is installed but wineserver was not found' >&2; exit 1; }
+export WINESERVER
+"$WINESERVER" -w
+```
+
+Verify the seam before rerunning a long installer: execute `WINESERVER=/resolved/path WINEPREFIX=/prefix winetricks -q settings win10` and require exit 0. See `references/wine-installers.md`.
 
 **P25: "ibus is healthy in checks but I can't type Chinese" — 90% of the time it's an IM_MODULE mismatch, not a protocol bug**
 
@@ -469,3 +598,31 @@ Why coexistence wins: (a) one `apt install` of ~12 MB, (b) doesn't change `updat
 - "中文打不出来 / 按 n i 出 ni / 完全没有候选词" in any app, AND shell env has `GTK_IM_MODULE=fcitx` with no fcitx running → P2 (silent fall-through), fix the IM_MODULE and restart daemon
 - Same symptom, but `GTK_IM_MODULE=ibus` everywhere AND Chinese works in `gnome-text-editor` → terminal-specific, suspect P25 second-cause
 - `ibus list-engine` returns empty even after `apt install ibus-pinyin` → daemon cache, restart with `ibus-daemon -drxR` (P1)
+
+## Remote desktop-package installs over SSH
+
+For installing Linux GUI packages on another machine, use the same detect → install → verify discipline remotely. Do not infer success merely from an SSH command returning.
+
+1. Confirm SSH reachability and inspect `/etc/os-release`, `dpkg --print-architecture`, existing packages, desktop-entry state, and sudo availability before downloading.
+2. Resolve the latest official release through the upstream GitHub Releases API, select the asset by exact architecture/package suffix (for example `_amd64.deb`), and avoid third-party mirrors unless the official asset is inaccessible.
+3. When interactive sudo is required, allocate an SSH PTY and respond to the actual password prompt through the SSH channel. Do not use `sudo -S`, embed credentials in generated scripts, print credentials, or retain temporary credential-bearing artifacts.
+4. Install the native package rather than inventing an AppImage fallback when upstream publishes a supported `.deb`; native packages provide menu entries, icons, and dependency integration.
+5. Verify by reading back exact package state (`dpkg-query -W`), executable path, and desktop entry. Record the remote command exit status; a successful download alone is not installation.
+
+See `references/remote-gui-package-install.md` for a reusable probe/install/verification recipe and security pitfalls.
+
+**P26: user says "install X" but the binary is already present and old — ask before skipping or reinstalling**
+The "Detect before recommending" step in §1 catches two cases: (a) X is not installed → install, (b) X is installed and current → skip. The third case — X is installed but **multiple years old** — falls between the cracks. The user named a specific tool, which usually means they care about *having it* (and likely having a working version), not the act of installing. Blindly skipping leaves them on a 2022 release; blindly reinstalling erases any stateful config (`~/.config/<tool>/`) without warning.
+
+Trigger: user says "install X" / "装个 X" and `which X` resolves but `<X> --version` is more than ~1 year stale (CLI tools) or the package version is far behind upstream stable (system packages: compare `apt-cache policy <pkg> | grep Candidate` to installed).
+
+Ask via `clarify` with three options (Recommended first):
+1. **Upgrade to latest** — use the official upgrade path (e.g. `curl -fsSL https://rclone.org/install.sh | sudo bash` for rclone, `pipx upgrade <pkg>` for Python tools, `npm i -g <pkg>@latest` for node). Keeps config, refreshes the binary.
+2. **Use the existing version** — proceed without touching X. Pick this if the user just needs *X* on PATH for some downstream tool and doesn't care about the version.
+3. **Full reinstall** — uninstall, then install. Only right when upgrading is broken or the user wants a clean slate.
+
+Do NOT skip the question. The user's word "install" is ambiguous: it can mean "make this exist" (any version OK), "get the latest" (upgrade), or "redo from scratch" (reinstall). Each takes a different code path. Defaulting to "you already have it, moving on" is the worst — it can leave the user with a known-broken or known-incompatible version (Aug 2026 example: rclone 1.60.1 was four years old and missing S3 improvements).
+
+When you do upgrade: back up the old binary first (e.g. `sudo cp -p $(which rclone) $(which rclone).bak.$(<X> --version | head -1 | awk '{print $2}')`) so a rollback is one `sudo mv` away. Bake the check + download + install + version-verify into a single self-contained `/tmp/install-X.sh` per the Driver pattern — agent-side sudo always fails (the tty problem), so this is always a user-side invocation.
+
+Aug 2026 case that produced this pitfall: user said "先安装 rclone" with a link to the official install doc. `which rclone` returned `/usr/bin/rclone` (v1.60.1, 2022 release). I surfaced "already installed vs upgrade vs reinstall" and they picked "更新" (upgrade). The Driver-pattern script at `/tmp/install-rclone.sh` then handled backup + download + sudo install + version-verify, all in one user-side `bash` invocation. No back-and-forth, no half-state.

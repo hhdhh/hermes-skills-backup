@@ -1,9 +1,11 @@
 ---
 name: hermes-gateway-admin
-description: Class-level admin for Hermes Agent's macOS launchd-managed gateway, profiles, scheduled tasks, and version monitoring. Use when adding a profile, auto-starting gateway at boot, diagnosing launchd plist rejection, **registering third-party skill scheduled tasks (UUMit / capability bundles / cron-to-launchd translation)**, **translating cron `0 */4 * * *` to launchd `StartCalendarInterval`**, **deciding agent_session_task uses launchd vs hermes cron**, checking for Hermes/web-UI/agent updates, switching providers / adding API keys (OpenCode Go, Anthropic, custom endpoints), or configuring TTS providers (10 built-in + custom). Triggers "gateway", "plist", "LaunchAgent", "launchctl", "装后台任务", "scheduled task", "定时任务", "StartCalendarInterval", "cron 表达式", "agent_session_task", "Bootstrap failed", "hermes version", "provider 切换", "TTS", "text_to_speech". 2026-07-04 立 gateway / provider, 2026-08-15 扩第三方 Skill 定时任务登记（UUMit 5 项后台实战）。
+description: Class-level admin for Hermes Agent's macOS launchd-managed gateway, profiles, scheduled tasks, and version monitoring. Use when adding a profile, auto-starting gateway at boot, diagnosing launchd plist rejection, **registering third-party skill scheduled tasks (UUMit / capability bundles / cron-to-launchd translation)**, **translating cron `0 */4 * * *` to launchd `StartCalendarInterval`**, **deciding agent_session_task uses launchd vs hermes cron**, checking for Hermes/web-UI/agent updates, swi… 飞书/feishu 通道排障详见 references/feishu-platform-troubleshooting.md。
 ---
 
 # hermes-gateway-admin
+
+> 原始完整描述：Class-level admin for Hermes Agent's macOS launchd-managed gateway, profiles, scheduled tasks, and version monitoring. Use when adding a profile, auto-starting gateway at boot, diagnosing launchd plist rejection, **registering third-party skill scheduled tasks (UUMit / capability bundles / cron-to-launchd translation)**, **translating cron `0 */4 * * *` to launchd `StartCalendarInterval`**, **deciding agent_session_task uses launchd vs hermes cron**, checking for Hermes/web-UI/agent updates, switching providers / adding API keys (OpenCode Go, Anthropic, custom endpoints), or configuring TTS providers (10 built-in + custom). Triggers "gateway", "plist", "LaunchAgent", "launchctl", "装后台任务", "scheduled task", "定时任务", "StartCalendarInterval", "cron 表达式", "agent_session_task", "Bootstrap failed", "hermes version", "provider 切换", "TTS", "text_to_speech", "飞书群没反应", "群消息无响应", "FEISHU_ALLOWED_USERS". 2026-07-04 立 gateway / provider, 2026-08-15 扩第三方 Skill 定时任务登记（UUMit 5 项后台实战）。
 
 Class-level admin for Hermes Agent's macOS launchd-managed gateway stack. Owned by the Hermes 化身 (灰灰) but applies equally to any profile under `~/.hermes/profiles/`.
 
@@ -321,6 +323,75 @@ MINIMAX_API_KEY=$(grep MINIMAX_API_KEY ~/.hermes/.env | cut -d= -f2) \
 
 完整 provider 速查 + voice_id 清单 + 坑细节见 `references/tts-providers.md`。
 
+### I. 诊断飞书群消息 @ 无响应（静默拒绝）
+
+**指纹**：群里 @ 机器人没反应，单聊秒回；gateway.log 里一条群消息都没有。
+
+**根因**（`plugins/platforms/feishu/adapter.py` `_admit()`）：`FEISHU_GROUP_POLICY` 未配默认 `allowlist`，`FEISHU_ALLOWED_USERS` 空 → 白名单空 → 群消息（含 @）全拒 `group_policy_rejected`；拒绝日志仅 DEBUG 级，INFO 级 gateway.log 完全不可见。单聊走 pairing 放行路径不受影响——"单聊活、群里死"就是它。
+
+**诊断（差集法）**：去重文件写入在 admission **之前**，seen 里有、日志里没有的消息 = 被闸门拒掉的：
+
+```bash
+python3 -c "import json,os;print('\n'.join(json.load(open(os.path.expanduser('~/.hermes/feishu_seen_message_ids.json')))['message_ids']))"
+grep "Inbound .* message received" ~/.hermes/logs/gateway.log | tail -20
+```
+
+**修复**：
+
+```bash
+# 1. open_id 从单聊日志拿：sender=user:ou_xxx
+grep "Inbound dm message" ~/.hermes/logs/gateway.log | tail -1
+# 2. 备份后追加（多人逗号分隔）
+cp ~/.hermes/.env ~/.hermes/.env.bak && printf '\nFEISHU_ALLOWED_USERS=ou_xxx[,ou_yyy]\n' >> ~/.hermes/.env
+# 3. 重启：Ubuntu = systemctl --user restart hermes-gateway.service（~10s 内 Lark WS 重连）；macOS = 对应 LaunchAgent kickstart
+# 4. 验证：群里 @ 一条，四段日志缺一不可
+timeout 35 tail -f -n 0 ~/.hermes/logs/gateway.log | grep --line-buffered -iE "raw message|Inbound|response ready|Sending"
+```
+
+准入决策树、策略变量矩阵、相邻症状区分见 `references/feishu-group-admission.md`。
+
+### I. 飞书平台排障（消息无反应 / 丢失 / Unauthorized）
+
+触发：飞书 @ 没反应、消息时通时不通、log 出现 `Unauthorized user`、群里冒英文系统提示。先做三源对账定位闸门，再改配置。
+
+**定位法（三源对账，先做这个再改配置）**：
+1. `~/.hermes/feishu_seen_message_ids.json` — 去重表，写入发生在策略闸**之前**，到过本机进程的消息都在
+2. `gateway.log` 的 `Inbound .* message received` — 通过全部闸门的
+3. 飞书服务器侧 `GET /im/v1/messages?container_id=<chat_id>` — 真相源（单聊要 `im:message`，群要 `im:message.group_msg` scope）
+
+判读：seen_ids 有 / log 无 = 被闸门拒（查 `FEISHU_ALLOWED_USERS`、`FEISHU_GROUP_POLICY`）；服务器有 / seen_ids 无 = 事件没到本机（同 app_id 多机抢事件 → 重置 App Secret 驱逐远端）。
+
+**常修点**：
+- 群消息全静默：默认 allowlist 且白名单空 → `FEISHU_ALLOWED_USERS` 加人（**open_id 和 tenant user_id 两种都列**，见 pitfall 18）
+- 间歇丢失：多机同 app_id 长连接 → 开发者后台重置 App Secret + 本机 `.env` 更新 + 重启（Ubuntu: `systemctl --user restart hermes-gateway.service`；mac 走标准操作 B）
+- 回复带思考过程：`hermes config set display.show_reasoning false` + 重启
+- 群要纯净（只 @ 应答）：`FEISHU_HOME_CHANNEL` 指向单聊 chat_id，cron/启动/告警等系统消息全走 DM
+
+**用户常设要求**：飞书回复只输出结果不带 reasoning；群只做 @ 应答；一个 app_id 只归一台机器（加机器 = 新建另一个飞书应用，不共享 secret）。
+
+完整失败模式表 + API 对账脚本 + secret 轮换波及面见 `references/feishu-platform-troubleshooting.md`。
+
+### I. 飞书平台排障（消息无反应 / 丢失 / Unauthorized）
+
+触发：飞书 @ 没反应、消息时通时不通、log 出现 `Unauthorized user`、群里冒英文系统提示。
+
+**定位法（三源对账，先做这个再改配置）**：
+1. `~/.hermes/feishu_seen_message_ids.json` — 去重表，写入发生在策略闸**之前**，到过本机进程的消息都在
+2. `gateway.log` 的 `Inbound .* message received` — 通过全部闸门的
+3. 飞书服务器侧 `GET /im/v1/messages?container_id=<chat_id>` — 真相源（单聊要 `im:message`，群要 `im:message.group_msg` scope）
+
+判读：seen_ids 有 / log 无 = 被闸门拒（查 `FEISHU_ALLOWED_USERS`、`FEISHU_GROUP_POLICY`）；服务器有 / seen_ids 无 = 事件没到本机（同 app_id 多机抢事件 → 重置 App Secret 驱逐远端）。
+
+**常修点**：
+- 群消息全静默：默认 allowlist 且白名单空 → `FEISHU_ALLOWED_USERS` 加人（**open_id 和 tenant user_id 两种都列**，见 pitfall 18）
+- 间歇丢失：多机同 app_id 长连接 → 开发者后台重置 App Secret + 本机 `.env` 更新 + 重启（Ubuntu: `systemctl --user restart hermes-gateway.service`；mac 走标准操作 B）
+- 回复带思考过程：`hermes config set display.show_reasoning false` + 重启
+- 群要纯净（只 @ 应答）：`FEISHU_HOME_CHANNEL` 指向单聊 chat_id，cron/启动/告警等系统消息全走 DM
+
+**用户常设要求**：飞书回复只输出结果不带 reasoning；群只做 @ 应答；一个 app_id 只归一台机器（加机器 = 新建另一个飞书应用，不共享 secret）。
+
+完整失败模式表 + API 对账脚本 + secret 轮换波及面见 `references/feishu-platform-troubleshooting.md`。
+
 ## 决策矩阵（什么能动，什么不能动）
 
 | 改动 | 安全档 | 主人确认 |
@@ -335,6 +406,7 @@ MINIMAX_API_KEY=$(grep MINIMAX_API_KEY ~/.hermes/.env | cut -d= -f2) \
 | **`hermes config set model.*`** | ✅ 直接做 | — |
 | **curl 验 API 通** | ✅ 直接做 | — |
 | **删 `~/.hermes/.env` 旧 key 行** | ✅ 直接做 | — |
+| **改 `~/.hermes/.env` 加 `FEISHU_ALLOWED_USERS` 群白名单** | ✅ 备份后直接做 | 名单非空后单聊也按白名单过滤 |
 | `pip install -e .[all]` 修 venv | ❌ **绝对不动** | 误报，conda 工作正常 |
 | `sudo launchctl kill ...` | ❌ 没 sudo | — |
 | 4 个 OAuth 登录（Nous/OpenAI/Gemini/xAI） | ❌ 用不到 | — |
@@ -347,6 +419,8 @@ MINIMAX_API_KEY=$(grep MINIMAX_API_KEY ~/.hermes/.env | cut -d= -f2) \
 - `references/crontab-layout.md` — 系统 crontab 现有条目速查
 - `references/provider-switching.md` — 切 provider / 加 API key 的完整诊断流（2026-07-12 立）
 - `references/tts-providers.md` — 10 个内置 TTS provider 速查 + voice_id 常用表 + endpoint 域名清单 + t2a_v2 vs text_to_speech 差异（2026-07-29 立）
+- `references/feishu-platform-troubleshooting.md` — 飞书平台消息丢失/静默拒绝/多机抢事件/授权失败：三源对账诊断法 + 失败模式速查表 + secret 轮换波及面
+- `references/feishu-group-admission.md` — 飞书准入管线顺序、`_admit()` 决策树、策略变量矩阵、差集诊断法、相邻症状区分
 - `references/web-ui-bridge-not-reachable.md` — web UI "Agent Bridge is not reachable" 完整错误链 + 日志 + 修复命令（2026-07-12 立）
 - `references/codex-opencode-go-config.md` — Codex CLI + OpenCode Go GLM-5.2 config.toml 正确配置 + 常见错误 + 模型端点速查表（2026-07-12 立）
 - `scripts/version-watchdog.sh` — 每日版本检查 + ticker 写入
@@ -380,7 +454,13 @@ MINIMAX_API_KEY=$(grep MINIMAX_API_KEY ~/.hermes/.env | cut -d= -f2) \
 14. **`text_to_speech` 工具不接受 `voice_id` 参数**（致命坑，2026-07-29 立）— 工具签名是 `text_to_speech(text, output_path)`，**只读 `config.yaml` 当前的 `tts.minimax.voice_id`**。Agent 想"换 voice 发 N 个 demo 让主人选" → 默认全是用同一个当前 voice_id 发出去 N 个相同声音 → 主人听感"全是同一种声音" = 实际就是同一段。**正解**：每次改 voice → 跑 `hermes config set tts.minimax.voice_id <vid>` → 跑 `verify-tts.py`，或者**全部用 curl 直发**绕过工具（见 references/tts-providers.md 做法）。
 15. **TTS 短文本 + 32kHz mono 听感差异小**（2026-07-29 立）— 6 个不同 voice_id 的 MP3 文件 md5/ProduceID 全不同，但人耳听短文本（"测试" / 1 句话）+ 32kHz mono 时容易误判为"同一种声音"。**要给人试听**：用 ≥ 2 句有情绪变化的中文文本（让声调/语气/停顿差异暴露），并且 **ProduceID 可作为唯一指纹**（每个 voice_id 在每个文本下 = 唯一 UUID）。
 16. **agent 不能 `patch`/`write_file` 改 `~/.hermes/config.yaml`**（2026-07-29 立）— 工具安全敏感拒绝这俩路径。**用 `hermes config set tts.*` 一次一字段**。10 字段就是 10 个 set 调用，全部幂等，可以放心重跑。
-17. **Web UI 0.7.17 的主 bridge endpoint 可能被污染成 worker socket**（2026-09-06 立）— 症状是网页报 `connect ENOENT .../hermes-agent-bridge-workers/<hash>.sock` 或恢复会话时报 `unknown action: status_if_loaded`，日志中 broker 每次 `ready` 后约 2 秒 `exited code=0` 并循环重启；路径软链和 `run_agent.py` 都正常。根因是从 Web UI bridge worker 内调用 `hermes-web-ui start/restart` 时，新 Node 进程继承 `HERMES_AGENT_BRIDGE_ENDPOINT=<worker socket>`，于是把 worker 当主 broker。
+17. **cron 跑的脚本调用 `systemctl --user` 必须显式注入用户总线环境**（Ubuntu systemd 化身立）— cron 环境没有 `DBUS_SESSION_BUS_ADDRESS`/`XDG_RUNTIME_DIR`，`systemctl --user is-active` 一律失败。若脚本是健康巡检/看门狗，会把正常运行的 gateway 误判为挂掉，进入「发告警 DM + 反复 restart」风暴（每 5 分钟一条告警刷屏用户、restart 打断进行中的任务）。**修复模式**：脚本内定义 `env = {"PATH": ..., "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}", "DBUS_SESSION_BUS_ADDRESS": f"unix:path=/run/user/{os.getuid()}/bus"}`，所有 systemctl 调用用 `subprocess.run([...], env=env)` 参数数组形式（不用 `sh -c` 拼接）。改完用 `env -i HOME=... python3 <script>` 模拟 cron 干净环境验证 exit 0 且不再产出告警，再交给 cron。
+18. **验证飞书消息送达要回读消息列表，不要只看 gateway.log 的 "Sending response"**（Ubuntu 化身立）— gateway 日志显示 `Sending response (N chars)` 甚至 SDK 返回成功，消息仍可能在飞书服务器侧静默丢失（delivery ledger 标 delivered 但实际不存在）。**验证闭环**：发送后用 `lark-cli im +chat-messages-list --chat-id <id> --order desc` 回读最近消息，确认内容真的出现；没出现即静默丢失。自动补发 watchdog 若存在，注意其覆盖范围——只盯单一群的 watchdog 对 DM 丢失无能为力，用户报告「你没回我」时先怀疑此类丢失，直接 `lark-cli im +messages-send` 补发并说明，不要只检查服务状态。
+ `connect ENOENT .../hermes-agent-bridge-workers/<hash>.sock` 或恢复会话时报 `unknown action: status_if_loaded`，日志中 broker 每次 `ready` 后约 2 秒 `exited code=0` 并循环重启；路径软链和 `run_agent.py` 都正常。根因是从 Web UI bridge worker 内调用 `hermes-web-ui start/restart` 时，新 Node 进程继承 `HERMES_AGENT_BRIDGE_ENDPOINT=<worker socket>`，于是把 worker 当主 broker。
     - **一次性修复**：`cd /Users/kk && unset HERMES_AGENT_BRIDGE_ENDPOINT && HERMES_AGENT_ROOT=/Users/kk/.hermes/hermes-agent /opt/homebrew/bin/hermes-web-ui restart --no-open`。
     - **永久修复**：在 PATH 优先的 `/Users/kk/.local/bin/hermes-web-ui` 放包装器，先 `unset HERMES_AGENT_BRIDGE_ENDPOINT`、固定 `HERMES_AGENT_ROOT=/Users/kk/.hermes/hermes-agent`、`cd /Users/kk`，再 `exec /opt/homebrew/bin/hermes-web-ui "$@"`。这样即便命令从 bridge worker 会话内执行也不会复发。
     - 成功后主 broker 必须监听 `/tmp/hermes-agent-bridge.sock`，worker 才监听 `.../bridge-workers/<hash>.sock`；连续检查 `/health` 20 秒须保持 `agent_bridge.status=ready`、PID 不变，并直接向主 socket 发 `status_if_loaded` 验证不返回 `unknown action`。不要删除 worker socket，它是正常的 profile worker。
+18. **飞书授权白名单必须同时列 open_id 和 tenant user_id 两种形式** — 开通通讯录 scope 后，事件里的 tenant user_id（短号，如 `gcd23dd2`）会取代 open_id（`ou_...`）成为主 ID，而 `_principal_matches_allowlist` 只按主 ID 匹配——白名单只有 `ou_` 形式时全部消息 `Unauthorized user` 拒绝（收到不回）。完整 user_id 用 `GET /contact/v3/users/<open_id>?user_id_type=open_id` 反查。
+19. **飞书消息丢失先做三源对账再动手** — seen_ids 去重表的写入在 `_admit` 之前，与 log 的差集就是被策略/授权拒掉的消息；再与服务器侧 `im/v1/messages` 对账，差集就是没到本机的。被 `_admit` 拒的日志是 DEBUG 级，INFO 下完全不可见——别因 log 没记录就断定消息没到达。
+20. **同一飞书 app_id 多机长连接 = 事件随机分流** — 间歇性丢消息的隐藏根因；本机 `ss -tnp` 只有一条连接不代表安全，竞争者在远端。驱逐法：开发者后台重置 App Secret（远端旧 secret 下次续期 401 自动出局），本机 `.env` 更新后重启。轮换后 lark-cli keyring 里同 app 的 secret 同步失效，需重新 bind。
+18. **飞书群消息（含 @mention）静默无响应、单聊正常** — admission 默认 `FEISHU_GROUP_POLICY=allowlist` 且 `FEISHU_ALLOWED_USERS` 空 = 群消息全拒；拒绝只打 DEBUG 级日志，INFO 级 gateway.log 完全看不见。**诊断**：`feishu_seen_message_ids.json` 的写入在闸门之前——seen 里有、日志 "Inbound ... message received" 没有的消息就是被拒的。**修**：`.env` 备份后加 `FEISHU_ALLOWED_USERS=<open_id>`（逗号分隔多人）+ 重启 gateway。**副作用**：该名单非空后单聊也按白名单过滤，要单聊全开另设 `FEISHU_ALLOW_ALL_USERS=true`。

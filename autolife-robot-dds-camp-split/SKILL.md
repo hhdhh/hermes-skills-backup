@@ -1,17 +1,12 @@
 ---
 name: autolife-robot-dds-camp-split
-version: 1.0.0
-description: "AutoLife S1 DDS 阵营分裂排查修复。Use when 前端电池恒100%、数据僵死、topic 查询 0 publisher、CYCLONEDDS_URI 阵营互不可见。"
-metadata:
-  triggers:
-    - "电池恒100%"
-    - "数据僵死"
-    - "DDS 阵营"
-    - "topic 0 publisher"
-    - "CYCLONEDDS"
+description: Use when 前端电池恒100%、数据僵死、topic 查询 0 publisher、CYCLONEDDS_U...
 ---
 
+
 # AutoLife S1 DDS 阵营分裂（2026-09-12 实战沉淀，402 机验证）
+
+> 完整描述："AutoLife S1 DDS 阵营分裂排查修复。Use when 前端电池恒100%、数据僵死、topic 查询 0 publisher、CYCLONEDDS_URI 阵营互不可见。"
 
 ## 病因
 
@@ -65,13 +60,9 @@ systemctl --user restart logo-backend.service  # 逐个重启消费方
 2. **改 unit 不 daemon-reload 不生效** —— 必须 reload + restart
 3. **验证用 WebSocket 端到端**，别只看 topic echo（echo 可能碰到别的坑）
 
-## 已知机队状态（按机号记录，IP 会变不写死）
+## 已知机队状态
 
-- ✅ 402 机：2026-09-12 DDS 阵营分裂已修复
-- ⚠️ 263 机：同症状，未处理
+- ✅ 402 机 `192.168.65.66`：2026-09-12 已修复
+- ⚠️ `192.168.50.29`：同症状，未处理
 
-> **每台机器的 IP 都不是固定的（DHCP 会变）**。不要在任何地方写死 IP。
-> 连接前先解析——首选 DNS PTR 法（秒级、免凭证）：`python3 ~/.hermes/skills/autolife-find-robot/scripts/find-autolife.py`（ping 扫邻居表 → `dig @网关 -x` → hostname 含 `autolife-robot-<机号>` 即机器人，自动回写 robots.json）。
-> 没抓到或要验证 SSH 可达再用：`python3 ~/.hermes/workspace/robssh.py scan --force`（SSH 逐台识别，慢但能兜底 PTR 缺失的机器）。
-> 之后用 `robssh.py <机号> <timeout> <命令>` 直接操作；`robssh.py list` 看全机队。找机器人完整决策树见姊妹技能 `autolife-find-robot`。
-> 实测（2026-09-13）：DNS 法一次抓 10 台（402/400/308/305/303/294 PTR 缺失/255/254/277/224/0×2），SSH 法只抓到 2 台。
+SSH：`ubuntu@<ip>`，密码 `ubuntu`（凭据统一管理，见 ~/.hermes/workspace/robssh.py）

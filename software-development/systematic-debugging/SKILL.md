@@ -61,11 +61,40 @@ Use for ANY technical issue:
 
 You MUST complete each phase before proceeding to the next.
 
+## Integration and Installer Failures: Separate the Primary Outcome from Cleanup
+
+For workflows that download artifacts, launch a browser/helper process, or invoke a nested subprocess, classify each stage independently before proposing a fix:
+
+1. **Primary operation:** Did authentication, artifact discovery, download, extraction, or installation actually succeed? Verify with concrete outputs such as counts, file sizes, checksums, and exit status.
+2. **Post-operation cleanup:** Did process shutdown, temporary-directory cleanup, or wrapper teardown fail after the primary operation? Do not report the whole operation as failed if its deliverable is intact.
+3. **Propagation:** Identify how the cleanup exception became the outer command's non-zero exit (for example, a nested subprocess raising `CalledProcessError`).
+4. **Repair at the lifecycle boundary:** Make helper/process termination explicit, wait for child processes or process groups, and make cleanup retry-safe. Avoid merely suppressing cleanup errors unless leaving residue is acceptable and verified.
+
+For installer/license failures, also verify the **package contract** rather than assuming the wizard and package agree. Trace every required input (tool path, generated file, config path) to its producer and compare that contract with the actual artifact contents. If the runtime service computes or logs a value such as a machine identity, treat that as evidence of the service's implementation, but do not silently bypass the intended licensing flow or fabricate a missing signing artifact. A robust diagnostic report should distinguish:
+
+- missing producer/tool versus invalid generated artifact;
+- file existence versus semantic validity;
+- configuration path versus the path actually read by the service;
+- wizard failure versus the service's independent runtime failure.
+
 ---
 
 ## Phase 1: Root Cause Investigation
 
 **BEFORE attempting ANY fix:**
+
+### Hardware/SDK Layer Separation
+
+When a component name looks like a Linux module (for example, `mod_microphone_main`), first establish which layer owns it. Robot SDK module names are often user-space configuration/registry identifiers, not kernel `.ko` modules; do not infer that `modprobe` is appropriate. Check the service's enabled-module configuration and startup report, then inspect the real device (`/dev`, ALSA/GStreamer/udev) before changing anything.
+
+For device-busy failures, identify the exact device node and its holder, not merely related processes. Use service logs plus `/proc/<pid>/fd` or `fuser`/`lsof` (with authentication available) to map the holder to a command. Stop only the confirmed conflicting process, then restart the dependent service and verify both the service state and the successful device registration. A running service is not enough: verify the functional chain (for example, `GStreamer microphone started`, device registered on the intended `hw:X,Y`, and the higher-level consumer/VAD/chatbot bound to it).
+
+### Distinguish Layers Before Loading or Changing Anything
+
+In robotics/Linux incidents, first identify whether the named component belongs to the kernel, a user-space SDK, a ROS node, or a systemd service. Names such as `mod_microphone_*`, `mod_camera_*`, and `mod_battery_*` may be SDK/configuration modules, not kernel `.ko` modules. Do not infer that `modprobe <name>` is appropriate from a module-like name. Verify with the service's startup logs, active configuration, package contents, and `/lib/modules/$(uname -r)` before proposing kernel-module changes.
+
+For a service that remains `active`, separate startup health from feature health: verify `ActiveState/SubState/Result/ExecMainStatus/NRestarts`, then inspect the feature's registration/initialization lines and its real data path (for ROS, topic list/info/hz). A successful process does not prove every feature works, and a quiet `journalctl -f` does not prove a hang; `-f` only waits for new log lines.
+
 
 ### 1. Read Error Messages Carefully
 
@@ -359,6 +388,18 @@ If you catch yourself thinking:
 | **3. Hypothesis** | Form theory, test minimally, one variable at a time | Confirmed or new hypothesis |
 | **4. Implementation** | Create regression test, fix root cause, verify | Bug resolved, all tests pass |
 
+## Remote systemd --user Service Diagnostics
+
+For production-like Linux services reached over SSH, distinguish the log-following command from the service itself: `journalctl --user -u NAME -f` attaches to the journal and `Ctrl+C` only exits the follower; it does not stop or restart the unit. After a restart, verify the unit independently with:
+
+```bash
+systemctl --user is-active service-a.service service-b.service
+systemctl --user show service-a.service -p ActiveState -p SubState -p Result -p ExecMainStatus -p NRestarts -p MainPID
+journalctl --user -u service-a.service --since '15:55:00' --no-pager -o short-precise
+```
+
+For multiple services, collect status, restart count, exit status, process identity, and recent logs in one SSH command. Separate startup-success evidence (`initialized`, `ACK`, `active/running`, `Result=success`, `ExecMainStatus=0`) from warnings and functional errors. A warning in a dependency scanner (for example, a missing optional media plugin) is not proof that the service failed; prioritize explicit runtime failures such as a sensor/serial reader connection error. If the service is active but the user reports missing data, the next probe should test the data path (topics, sockets, devices, or registrations), not repeatedly restart the unit.
+
 ## Hermes Agent Integration
 
 ### Investigation Tools
@@ -399,6 +440,48 @@ When fixing bugs:
 2. Debug systematically to find root cause
 3. Fix the root cause (GREEN)
 4. The test proves the fix and prevents regression
+
+## Service-Orchestration Pitfall: Distinguish Canceled Jobs from Root Failures
+
+When debugging a `systemctl --user restart` that reports `Job ... canceled`, inspect the dependency graph and the journal of the prerequisite service before treating the target service as the root cause:
+
+1. Read the target unit with `systemctl --user cat` and check `Requires=`, `BindsTo=`, `PartOf=`, and `After=`.
+2. Query both units with `systemctl --user show ... -p ActiveState -p SubState -p Result -p MainPID -p NRestarts`.
+3. Read the prerequisite's journal around the restart window, not only the target's status.
+4. If the target is killed during `ExecStartPre` (often a deliberate sleep), interpret `status=15/TERM` as dependency-driven cancellation.
+5. Follow the prerequisite's first application-level exception. Ignore non-fatal startup warnings until the first exception that causes the process to exit.
+6. For `Restart=always`, verify stability by checking that `NRestarts` stops increasing and the unit reaches `active/running`; `Result=success` alone may only describe a stop/restart operation, not application health.
+
+For Python packages used by services, distinguish missing runtime configuration assets from missing code: inspect the installed package directory and `pip show -f`/wheel contents. If code opens files such as `settings.toml` or `robot_action.json`, `.example` files are templates, not valid production replacements. Search for a verified device-specific backup and version match before copying; do not fabricate configuration or blindly rename templates.
+
+## Remote systemd service and hardware-module diagnosis
+
+When diagnosing a remotely managed robot or Linux service, separate **process health** from **feature health**. A unit can be `active (running)` while one module (for example, a battery reader) is unusable.
+
+1. Connect to the target and collect evidence in one non-interactive command where possible. Use `systemctl --user show` for machine-readable fields: `ActiveState`, `SubState`, `Result`, `ExecMainStatus`, `NRestarts`, and `MainPID`. Also inspect recent journal output with `--no-pager -o short-precise`.
+2. Search logs by the affected subsystem, but do not treat every warning as the root cause. Classify messages into startup success, dependency/plugin warnings, configuration warnings, and functional errors.
+3. For serial or USB hardware, verify the full chain: configured logical path (such as `/dev/ttyBattery`), symlink target, underlying `/dev/ttyACM*` or `/dev/ttyUSB*` node, permissions, `udevadm` vendor/product/path properties, and `lsusb` enumeration. A matching USB device and udev symlink prove enumeration, not that the downstream device is responding.
+4. Inspect the actual deployed unit (`systemctl --user cat`) and the installed runtime configuration/package files. Do not infer the active configuration from a wizard source tree or from the intended robot model alone.
+5. Before changing configuration, check whether the device is held by another process (`fuser -v` and `lsof`). Then verify protocol/driver version, port, and baud-rate settings against the installed module configuration. Restart only after evidence narrows the cause, and re-read the exact target state and fresh logs afterward.
+6. When SSH requires a password, use an interactive PTY and submit the password through the process tool; do not put credentials in shell command text or claim a diagnosis from a failed non-interactive attempt.
+
+Common pitfall: `journalctl -f` follows logs, and `Ctrl+C` exits the follower but does not stop the service. Another pitfall is a terminal pager (`systemctl status`) hiding later commands; use `--no-pager` for diagnostic batches.
+
+## Service Health vs Functional Readiness
+
+For daemonized robotics and multimedia services, do not equate `systemctl ... active/running` with the user-visible feature working. Treat startup as a staged pipeline and verify each stage:
+
+1. Process/supervisor state: `ActiveState=active`, `SubState=running`, `Result=success`, `NRestarts=0`.
+2. Initialization milestones: inspect logs for explicit success markers (connections, registrations, device attachment, executor spin).
+3. Runtime data path: inspect ROS node/topic graph and measure actual rates; a subscribed topic with `Publisher count: 0` means the topic has no producer, not that the subscriber is down.
+4. Output path: verify the downstream consumer, shared-memory/audio sink, socket, or UI receives data.
+5. Feature-specific readiness: search logs for partial initialization errors. A component such as Piper TTS can initialize while its chatbot/event producer fails due to a missing resource, resulting in no speech despite healthy audio hardware.
+
+A quiet `journalctl -f` is not evidence of a hang: `-f` follows new records, and a healthy idle process may emit none. Use status, process inspection, topic/data probes, and feature-specific logs instead.
+
+When diagnosing missing speech, separate the chain explicitly:
+`event/input -> chatbot/text generation -> TTS engine -> audio SHM/socket -> speaker device -> playback`.
+Find the first failed stage before changing restart order or hardware configuration. Missing packaged assets (for example, a prompt file) can produce a partial-start state and should be checked alongside TTS/audio initialization messages.
 
 ## Real-World Impact
 

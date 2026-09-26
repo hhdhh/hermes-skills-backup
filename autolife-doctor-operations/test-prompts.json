@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "prompt": "309 机器人做个体检",
+    "expected": "按 doctor 清单逐项检查服务/传感器/磁盘，输出健康报告"
+  },
+  {
+    "id": 2,
+    "prompt": "274 测试机上 vision 挂了怎么重启",
+    "expected": "重启 vision 必连带 face-detection-service，给出完整命令"
+  }
+]

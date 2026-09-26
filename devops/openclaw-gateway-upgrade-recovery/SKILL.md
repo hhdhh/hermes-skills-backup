@@ -38,7 +38,7 @@ openclaw --version
 
 **症状**：`openclaw: Node.js >=22.22.3 <23, >=24.15.0 <25, or >=25.9.0 is required (current: v24.4.0).`
 
-**根因**：OpenClaw 新版（7.1+）要求 Node ≥ 25.9.0，但 `~/.openclaw/tools/node-v24.4.0/` 是 v24.4.0 不满足。
+**判定方法**：用 `npm view openclaw@latest engines --json` 获取目标包声明的完整 Node 版本范围，并分别检查 CLI 和服务实际使用的解释器。范围中的 `||` 表示可选分支；不能将其中的 `>=25.9.0` 误读为所有安装都必须满足的最低版本。再核对官方安装文档的推荐版本，不要将旧 runtime 路径直接用于新安装。
 
 **修复 plist（用 plutil，不用 sed）**：把 `ProgramArguments[3]` 改成 homebrew 的 `/opt/homebrew/opt/node/bin/node`（v26.3.0），同时更新 Comment 字段：
 ```bash
@@ -286,6 +286,16 @@ openclaw plugins update feishu discord slack
 6. Embedding provider 必须以真实向量 probe 为准，不能只凭“存在凭证”或“schema 支持”；没有可用 provider 时保持搜索开启并验证 FTS 回退。
 
 完整命令、Memory Wiki 验收标准与 provider readiness 流程见 `references/multi-agent-owner-memory-wiki-heartbeat.md`。
+
+## 跨框架迁移与 Linux 部署
+
+- 用户要求保留 Hermes 时，采用独立复制，不共享可写目录、不改源配置、不停源网关；迁移前后比较源配置哈希，并另验进程状态。
+- 迁移同一消息应用前确认渠道归属；保留源助手运行时，目标渠道和插件均显式禁用，防止争抢事件或重复发送。
+- 将文件保全、原生配置适配、依赖就绪、运行态成功分开验收；归档配置不能称为功能迁移完成，技能被发现也不等于能执行。
+- 凭证仅按授权范围在本机复制，不在参数或输出中展示；迁移历史可能包含秘密，档案须限制权限且不得用整份档案发起外部验收。
+- 不将 Hermes 的数据库、钩子、MCP 或定时任务直接接入 OpenClaw；先备份、检查目标 schema，再做显式映射。自动化启用和服务重启单独确认。
+
+具体顺序、Linux 服务权限处理、历史导出和大规模技能发现验收见 `references/linux-deployment-and-agent-migration.md`。
 
 ## 联动
 

@@ -162,6 +162,31 @@ sudo ufw allow 22/tcp
 sudo ss -lntp | grep ':22 '
 ```
 
+### 模式 F：Wi-Fi 下 ARP 应答但 IP 层全死（AP 代答 / 主机睡眠）
+
+**症状**：`ip neigh` 对目标 IP 持续有 MAC（甚至 REACHABLE），但 ping / 所有 TCP 端口 / mDNS / NBNS 全部静默丢包（连接超时，非 refused）。
+
+**机制**：Wi-Fi AP 会替关联中但休眠的客户端代答 ARP（Proxy ARP），网卡 offload 也会在系统睡眠（Windows Modern Standby）时代答二层——「ARP 在线」只证明 NIC/关联还在，不证明 IP 栈活着。有线网络里 ARP 有 MAC 同样可能是交换机 CAM 缓存残留。
+
+**处置顺序**：
+1. 发 WoL 魔术包（python socket 广播 `ff*6 + MAC*16` 到子网广播:9）——多数设备 BIOS 未开网络唤醒，叫不醒是常态，不是排除项
+2. 全网段 ping sweep 后 `ip neigh` 按目标 MAC 反查——设备若换了 IP，同一 MAC 会挂在新 IP 上（比 DNS/PTR 可靠，无需凭证）
+3. 挂后台轮询守望（每 15s 探一次 22 端口，10 分钟窗口），一上线即动手，不要反复手动重试
+4. 以上全空 → 结论只能是「需物理接触唤醒/检查」，停止堆探测手段
+
+### 模式 G：Android 设备 ping 通但应用端口全聋（ROM 冻结后台 app）
+
+**症状**：手机 IP ping 正常、ARP 正常，但目标 app 的 UDP/TCP 端口（如 KDE Connect 的 1716）零回应。
+
+**机制**：ColorOS/MIUI/HyperOS 等国产 ROM 会冻结后台 app 的 CPU 与网络（不是杀进程）——ICMP 由内核协议栈代答所以 ping 通，app 层完全无响应。「设备在线」≠「app 活着」。
+
+**处置**：
+1. `sudo tcpdump -i any -nn "host <手机IP> and port <端口>"` 抓 30s，期间向手机单播该协议的身份/发现包——只见本机出站、零回包 = app 被冻结实锤
+2. 结论即止：这是手机端 app 生命周期问题，堆网络探测无意义；需用户在手机上操作（多任务卡片锁定、电池白名单、允许自启动）
+3. 评估「跨设备同步」类方案前先判对端 ROM 能否让 app 后台常驻——不能就换方案（两端都是常驻设备的 LocalSend/KDE Connect，或浏览器一次性 HTTP 拉取），别硬配
+4. 附带：Android 10+ 禁止后台 app 读剪贴板——「手机→电脑」方向剪贴板同步在 app 退后台时必然失效，验证预期要按这个来
+
+
 ## 平台特定坑
 
 ### macOS 坑
@@ -175,6 +200,7 @@ sudo ss -lntp | grep ':22 '
 
 ### Linux 坑
 
+- **多网卡主机：服务通告的 IP 必须在"能回包"的网段**——机器有多块网卡时，默认出口往往只走其中一块（`ip route | grep default` 里 metric 最小的那块，常是 WiFi）。若把某服务（relay/admin/API）的配置 IP 改成另一块**非默认出口**网卡的地址，客户端即使同网段能到，远端回包也可能走错网卡出不去 → 表现为"改了 IP 但客户端还是找不到"。改任何"对外通告 IP"前先 `ip -4 addr` + `ip route | grep default` 确认哪个网卡是真实出口，别只对着一块网卡的地址填。
 - **`nc` 在 busybox 嵌入式设备没 `-w`**——需要 `-q 1` 或加 timeout wrapper
 - **SELinux 挡了 SSH 端口**：`sestatus` 看 `enforcing` 模式 + `ausearch -m avc -ts recent | grep sshd`
 - **systemd 启了 sshd 但 listen 失败**：`journalctl -u ssh -n 50` 看错（典型：端口被占、Key 文件权限错）
@@ -244,7 +270,9 @@ EOF
 ├─ Step 3: L3 ICMP 验证
 │   ping -c 3 -W 2000 X
 │   ├─ 通 → 设备在线,跳 Step 4
-│   ├─ 100% loss + ARP 有 MAC → 模式 A (防火墙/设备死)
+│   ├─ 100% loss + ARP 有 MAC → 模式 A (防火墙/设备死/主机睡眠)
+│   │   ⚠️ Wi-Fi 下 ARP 应答可能来自 AP 代答(Proxy ARP/休眠客户端),
+│   │      ARP REACHABLE ≠ 主机醒着——见模式 F
 │   └─ 100% loss + ARP 无 → 真断网
 │
 ├─ Step 4: L4 端口验证
@@ -271,12 +299,18 @@ EOF
 
 ## 反例（不该做的事）
 
+❌ **不要因一次 background SSH 启动失败/超时就判网络或 SSH 服务不通**：
+- background 会话创建失败（PTY 分配、auth 提示等待、句柄丢失）≠ 22 端口不通、≠ 主机离线
+- 判定顺序：先用 TCP 探活 `timeout 4 bash -c 'cat </dev/tcp/<ip>/22 | head -c 80'` 看 banner 字符（如 `SSH-2.0-OpenSSH_x.y`）→ 端口在线；再下“SSH 不通”的结论。
+- 客户端 PTY/句柄工具缺失不阻塞端口可达；TCP 层结果才是网络层真相。
+
 ❌ **不要在 L1-L4 没跑完就调 SSH 参数**（改 key / 加 -i / 改端口）——浪费时间
 ❌ **不要 `ssh -o StrictHostKeyChecking=no` 给主人**——这是安全降级，不是排错手段
 ❌ **不要 echo SSH password 到日志/MEMORY**——密码是凭据
 ❌ **不要 `kill -9 sshd` 试着重连**——可能让目标机彻底失联
 ❌ **不要把主人 `~/.ssh/id_ed25519` 复制到其他机器**——密钥是身份凭证
 ❌ **不要靠 ping 判定设备在线**——很多设备（云服务器、IoT、防火墙后主机）禁 ping
+❌ **不要靠 ARP 判定主机在线**——Wi-Fi AP 替休眠客户端代答 ARP；TCP refused/静默丢包才是主机死活的可靠证据（见模式 F）
 ❌ **不要在 macOS 用 `nc -w` 设超时**——用 `-G`，否则看起来没超时
 ❌ **不要假设 `arp` 的 MAC 就是目标设备**——ARP 缓存可能在 L2 不通后还残留几分钟
 ❌ **不要看到 `password:` 提示就以为 SSH 通了**（2026-08-07 主人坑）：
@@ -314,6 +348,22 @@ EOF
 3. `ioreg -p IOUSB` 找 `bDeviceClass` —— `0` = vendor-specific，手机端 USB 模式没切到 RNDIS
 4. OPPO/vivo 的 RNDIS 选项经常只在 USB 刚插上时弹窗 —— 错过要**重新插拔数据线**
 5. 网卡起来后默认路由还在 Wi-Fi —— 用 `networksetup -ordernetworkservices` 切
+
+## 延伸场景：NetBird / Tailscale 等 mesh VPN 连远端机
+
+mesh VPN 通过主机名直连对方机器时，**错误信号常常伪装成"主机名解析失败"或"连接超时"**，而不是真正的"对方没开"。诊断顺序：
+
+1. **本机 netbird 必须 Connected**：`netbird status` 看 Management + Signal 都 Connected。**⚠️ 会话会过期**：NetBird 自建 session 约 24h 过期，过期后 `netbird status` 变 `Daemon status: NeedsLogin`——**此时到 mesh 里任意目标机都 ping 不通 / TCP 失败**，会把你自己的掉线误判成目标机故障。**先看自己**：任何"连不上 mesh 节点"先 `netbird status` 确认本机还在线，NeedsLogin 就 `netbird up`（自建无 SSO 用 `--management-url`+ 新 setup key）重登再测。
+2. **本机 netbird SSH server 状态看参考**：`netbird status -d` 输出里有 `SSH Server: Disabled/Enabled` —— 这是**本机的**设置，**对方机器默认也是 Disabled**，除非对方显式 `sudo netbird ssh-server enable`。
+3. **`netbird ssh` 报错的真实含义**（按概率）：
+   - `dial tcp: lookup <hostname>` / `server misbehaving` → 对方机器没在 netbird 上登录，或 mDNS 没注册 — **不**是网络问题
+   - `SSH server detection failed` / `Failed to connect to user@host:22` → **对方**机器 netbird SSH server 是 Disabled；解决：在对方机器跑 `sudo netbird ssh-server enable && sudo systemctl restart netbird`
+   - `Permission denied (publickey)` → 走到对方 SSH 协议层，密钥未配（fallback 到 P3 SSH 认证路径）
+4. **`peers` 子命令不存在**：netbird 0.77.x CLI 没有 `netbird peers list`；要列所有 peer（包括对方），看 `netbird status -d` 输出的 "Peers detail" 段（但**默认只显示直连的 peer**，远端机器即便在管理面板在线也不一定出现在这里，受 lazy connection 模式影响）。
+5. **确认对方是否在你的 netbird 同一个 ACL 组**：管理面板 https://netbird.<your-domain>:443 看 Groups / ACLs —— 如果没共享 ACL，wireguard 不会建 tunnel，再怎么 ssh 都连不上。
+6. **不要在没确认对方机器能 ssh 时把凭证/API key 写过去**：除非 `ssh user@host` 真返回 `whoami`，否则视为连接失败 —— 绝不盲推密码或 token。
+
+**回退路径**：如果 netbird 走不通但对方在物理 LAN（共享路由器），直接试 `ssh user@<lan-ip>` （如 192.168.x.x）—— 不需要 mesh VPN 也能走。
 
 ## 联动
 

@@ -1,320 +1,152 @@
 ---
 name: autolife-robot-prompt-ops
-version: 1.0.0
-description: "智动未来 AutoLife S1 机器人的 prompt/RAG 修改流程。Use when 主人要求修改机器人 system prompt、增删 RAG 知识库、把飞书/文档转 Q&A 加入机器人。从远端读取 prompt/rag，按主人给的 4 档方案（A维持/B拼接/C补丁/D真RAG）执行。"
-metadata:
-  requires:
-    bins: ["ssh", "lark-cli"]
-  triggers:
-    - "修改机器人 prompt"
-    - "机器人加 Q&A"
-    - "小梅沙问答加入机器人"
-    - "autolife prompt"
+description: Use when the task involves autolife robot prompt ops.
 ---
 
-# AutoLife S1 机器人 prompt/RAG 修改流程
+# autolife-robot-prompt-ops
 
-> **目标机器人**：按机号定位（274），IP 不固定——首选 `python3 ~/.hermes/skills/autolife-find-robot/scripts/find-autolife.py`（DNS PTR 秒级、免凭证，自动回写 robots.json），兜底 `robssh.py ip 274`（hostname `autolife-robot-274`，SSH 用户 `ubuntu`）
-> **跑的服务**：`autolife_robot_kiosk.main`（由 `logo-backend.service` 拉起，env=`robot_env`）
-> **加载路径**：`autolife_robot_vision.assets.prompt.prompt.txt`（通过 `workspace.workspace.load_base_prompt()`）
-> **重启命令**：`systemctl --user restart logo-backend.service`（**默认不动**，等主人下令）
 
-## 远端关键路径（机器人上）
 
-| 路径 | 作用 |
-|------|------|
-| `~/.huihui-staging-YYYYMMDD-HHMMSS/` | 中转 staging 目录（按时间戳建） |
-| `~/miniconda3/envs/robot_env/lib/python3.12/site-packages/autolife_robot_vision/assets/prompt/prompt.txt` | **运行时 system prompt**（直接读） |
-| 同目录 `rag.txt` | **运行时未使用**（grep 验证过 KnowledgeRetriever 没被调用，详见下方"重要发现"） |
-| 同目录 `prompt.txt.example.capsule_salesperson` (19KB) | 商品售卖 prompt 模板 |
-| 同目录 `prompt.txt.example.langham` (41KB) | 朗廷酒店 prompt 模板 |
-| 同目录 `prompt.txt.example.qwen` (7KB) | Qwen LLM 适配模板 |
-| `~/.config/systemd/user/logo-backend.service` | kiosk 启动单元 |
+## 补充（patch，审批积压恢复）
 
-## 重要发现（2026-09-11 验证）
+## 最近一次执行记录（2026-09-18 · autolife-robot-321 · v12-persona）
 
-1. **`rag.txt` 没人调用**：vision/kiosk 包里 grep 不到任何 rag.txt 引用
-2. **真 RAG 文件**：`knowledge.jsonl` + `knowledge.vec.jsonl`（schema: `{id, topic, content, embedding}`，embedding 模型 `text-embedding-v4` 即 DashScope）。**这两个文件从来没生成过 → RAG 从未启用**
-3. **`KnowledgeRetriever` 是 .so 编译的**（`audio/knowledge_retrieval.cpython-312-x86_64-linux-gnu.so`），但 vision 包里没人 import 它
-4. **`workspace` 模式**：`workspace.cpython-312-...so` 里的 `WorkspaceFactory.create_workspace()` 从服务端拉 workspace_id，本地 `prompt.txt` 是"无 workspace" 模式（`load_base_prompt` 直接读）
-5. **当前活跃 prompt**：2972 字节（小智前台接待员版，主人 prompt1.txt 原版），不是 `prompt.txt.example.capsule_salesperson` 的 19KB 商品版
-6. **重启生效**：`systemctl --user restart logo-backend.service`（kiosk 进程 PID 4131），~3-5 秒后新 prompt 生效
+- 任务："给 321 多一点 AI 对话自由度，更像人、更有感情"——人设自由化，不加新知识
+- 路径：**只改前段人设 + 知识库核心规则块**；Q01-Q18/G/F 语料逐字节不动（脚本断言 `KB corpus identical: True`）
+- 核心改动：①性格段"稳重专业绝不拖泥带水"→"热情真诚有幽默感、像热爱美食的老朋友"；②知识库规则2 "严格使用中英对照回答"→"素材库不是台词本：表达自由、事实零编造（数字/价格/日期/公司名/奖项不得改）"；③新增"回答方式（表达自由度）"段：情感反馈、钩子留白、主动追问一轮一个；④明确禁 G06 语种二次确认
+- 最终版本：**v12-persona**（md5 `80cc6e331eaf915a59991f0688ab3481`，20933 B）
+- 备份链：`bak.v11-bilingual.20260918` / `bak.before-v12.20260918` + staging `~/.huihui-staging-20260918-v12/`
+- 经验：**"像机器"的根源通常在两处——性格段的约束词 + 知识库的"严格使用原文"规则**。放开人设时事实纪律单独成句锁死（"感情可以放开，事实零编造——这是底线"），展会场景防编造红线不随人设放松
+- 状态：文件已替换 + md5 校验通过，等主人下重启指令
 
-## 4 档方案（主人拍板用）
+## 执行记录（2026-09-17 · autolife-robot-321 · v11）
 
-主人每次给"加 Q&A"任务，先汇报机器人现状 + 提 4 档选项，让主人选档：
 
-| 档 | 说明 | 工作量 | 适用 |
-|----|------|--------|------|
-| **A 维持现状** | 只换 prompt.txt + rag.txt，RAG 不会生效 | 30 分钟 | 主人只是要"占位"或测试 |
-| **B 拼接到 prompt** ⭐ | 把 Q&A 摘要塞进 prompt.txt 的"知识库"段，机器人基于 prompt 回答 | 1 小时 | 主人最常用档，单次 Q&A 量小（<300 条）|
-| **C 对话补丁** | 写独立 Python 服务做关键词匹配 RAG（命中返固定答案，否则透传给机器人） | 半天 | 不想改机器人代码、不想 prompt 变大 |
-| **D 真 RAG 启用** | 写 `knowledge.jsonl` → DashScope embedding 生成 `knowledge.vec.jsonl` → 在主流程插 KnowledgeRetriever | 半天-1 天 | Q&A 量 > 500 条或需语义检索 |
-
-默认推荐 B（性价比最高）。
-
-## 标准流程（按"先侦察后动手"原则）
-
-### Step 1: 读主人给的输入
-- 主人贴的原始 prompt 文件（如 `prompt1.txt`）
-- 飞书/Markdown/Word 形式的 Q&A 文档 URL 或本地文件
-
-### Step 2: 解析 Q&A 文档
-- 飞书 docx 用 `lark-cli docs +fetch --api-version v2 --doc <URL>`，XML 输出，提取所有 `<h3 seq-marker="X.Y">` 作为问题标题，下方 `<p>` 作为答案
-- Markdown 按 `## ` / `### ` 标题分级
-- 表格（飞书常含经济指标）保留为多行答案
-
-### Step 3: SSH 上机器人侦察（**没侦察不许动手**）
-```bash
-# 用 pty+fork 绕过 ssh 密码交互（python -c 'import pty,os,select,time; ...'）
-# 必须确认的 4 件事：
-# 1. 哪个 prompt.txt 是运行时用的
-# 2. rag.txt 是否真被调用
-# 3. 启动 kiosk 的 systemd 服务名
-# 4. workspace 模式（capsule/restaurant/无）
-```
-
-侦察命令清单：
-```bash
-ls -la /home/ubuntu/miniconda3/envs/robot_env/lib/python3.12/site-packages/autolife_robot_vision/assets/prompt/
-find /home/ubuntu/miniconda3/envs/robot_env/lib/python3.12/site-packages -name "*.so" -path "*workspace*" -o -name "*.so" -path "*knowledge_retrieval*"
-strings <knowledge_retrieval.so> | grep -iE "rag|knowledge|embedding|kb_emb|prompt|jsonl"
-grep -rn -E "prompt\.txt|rag\.txt|knowledge\.vec|knowledge\.jsonl|KnowledgeRetriever|load_base_prompt" <vision pkg> 2>/dev/null
-grep -l "autolife_robot" /home/ubuntu/.config/systemd/user/*.service
-```
-
-### Step 4: 写本地组装产物（不上机器人）
-- 组装新 prompt.txt（按主人选的方案）
-- 组装新 rag.txt（如果主人选 A/B 都写，方案 D 才用 knowledge.jsonl）
-- 备份所有原文件到 staging（不上机器人前不破坏）
-
-### Step 5: 上传机器人（base64 流式 SSH 传，不用 scp 因为密码交互烦）
-- **scp + stdin 不行**（密码不读 stdin）
-- **方案**：base64 编码 → 分块（7 万字符/块）→ `ssh ... 'echo -n ... > file.b64'` → `ssh ... 'base64 -d file.b64 > file'`
-- **每次传完立即 md5sum 校验**，本地 md5 必须 == 远端 md5
-
-### Step 6: 备份原文件 + 替换
-- 三重备份原 prompt：`(1) .bak.capsule.YYYYMMDD / (2) .bak.original-2972B.YYYYMMDD / (3) .bak.before-b.YYYYMMDDHHMMSS`
-- 备份原 rag：`.bak.YYYYMMDD`
-- `cp -v staging/prompt.txt.new2 <target>/prompt.txt`
-- **再 md5sum 校验**
-- **不重启**，等主人下令
-
-### Step 7: 汇报 + 等主人重启指令
-- 列出所有改动文件 + 备份路径 + md5
-- 给出 `systemctl --user restart logo-backend.service` 命令（不执行）
-- 给出回滚命令：`cp prompt.txt.bak.original-2972B.YYYYMMDD prompt.txt && systemctl --user restart logo-backend.service`
-- 说明预期影响（如 B 档会增加 13x token 成本）
-
-## SSH 流式 base64 传输模板（已验证可用）
-
-```python
-import pty, os, select, time, base64
-
-def ssh_run(host, user, password, cmd, timeout=30):
-    pid, fd = pty.fork()
-    if pid == 0:
-        os.execvp("ssh", ["ssh", "-o", "StrictHostKeyChecking=no",
-                           "-o", "UserKnownHostsFile=/dev/null",
-                           f"{user}@{host}", cmd])
-        os._exit(127)
-    out = b""
-    sent = False
-    end = time.time() + timeout
-    while time.time() < end:
-        r, _, _ = select.select([fd], [], [], 0.3)
-        if r:
-            try:
-                chunk = os.read(fd, 4096)
-                if not chunk: break
-                out += chunk
-                if not sent and b"password:" in out.lower():
-                    os.write(fd, (password + "\n").encode())
-                    sent = True
-            except OSError: break
-        try:
-            waited_pid, status = os.waitpid(pid, os.WNOHANG)
-            if waited_pid == pid:
-                try: out += os.read(fd, 65536)
-                except OSError: pass
-                return out.decode("utf-8", errors="replace"), status
-        except ChildProcessError: break
-    try: os.kill(pid, 9)
-    except OSError: pass
-    return out.decode("utf-8", errors="replace"), -1
-
-# 上传文件
-def upload_via_b64(host, user, pwd, local_path, remote_path, chunk=70000):
-    with open(local_path, "rb") as f:
-        data = f.read()
-    b64 = base64.b64encode(data).decode()
-    chunks = [b64[i:i+chunk] for i in range(0, len(b64), chunk)]
-    ssh_run(host, user, pwd, f"rm -f {remote_path}")
-    for idx, c in enumerate(chunks):
-        op = ">" if idx == 0 else ">>"
-        ssh_run(host, user, pwd, f"echo -n '{c}' {op} {remote_path}.b64")
-    ssh_run(host, user, pwd, f"base64 -d {remote_path}.b64 > {remote_path} && rm {remote_path}.b64")
-    ssh_run(host, user, pwd, f"md5sum {remote_path}")
-    local_md5 = __import__('hashlib').md5(data).hexdigest()
-    # 调用方负责校验
-    return local_md5
-```
-
-## B 档 prompt 组装模板（已验证可用）
-
-```python
-# 1. 读主人原 prompt (1204 字符 / 2972 B)
-# 2. 读飞书 Q&A JSON（已解析的 [{seq, question, answer}])
-# 3. 摘要 + 截断
-def smart_truncate(text, max_chars=250):
-    text = re.sub(r'^答[:：]\s*', '', text.strip())
-    if len(text) <= max_chars: return text
-    cut = text[:max_chars]
-    for sep in ['。', '；', '\n', '，', '、']:
-        idx = cut.rfind(sep)
-        if idx > max_chars * 0.6:
-            return text[:idx+1] + "……（详见原始资料）"
-    return cut + "……（详见原始资料）"
-
-# 4. 组装新 prompt（原 prompt + Q&A + 使用规则）
-# 原 prompt 末尾"你的知识库"段替换为：
-NEW_KB_SECTION = """# 你的知识库
-
-## 公司基础信息
-智动未来成立于2023年底...（原版内容）
-
-## 小梅沙项目销售百问
-（资料截至2022年10月31日，共 N 个常见问题）
-
-使用规则：
-1. 当客人提问涉及...请优先从下方问答中检索答案。
-2. 严格根据问答内容作答，不得编造未在问答中出现的数字、人名、合作单位、品牌或奖项。
-3. 如问答中有"……（详见原始资料）"，说明资料较长，请简洁概括前段要点。
-4. 若客人问的问题在下方问答中找不到答案，礼貌说明"这个我暂时没有详细信息，建议咨询项目方"。
-5. 回答时不要照搬整个问答段落，要提炼成自然口语化的一段或几句话，符合 30 秒输出限制。
-6. 严禁使用 Markdown 加粗符号或项目编号格式（但可以自然引用原文里的数字编号如"6 班幼儿园"）。
-
-"""
-
-# 5. 拼 Q&A
-qa_lines = []
-for q in qa_list:
-    qa_lines.append(f"问：{q['question']}\n答：{smart_truncate(q['answer'])}")
-qa_text = "\n\n".join(qa_lines)
-
-new_prompt = original_prompt_until_kb + NEW_KB_SECTION + qa_text + "\n"
-```
-
-## 飞书 Q&A 解析模板
-
-```python
-import re, json
-
-# lark-cli docs +fetch --api-version v2 --doc "https://xxx.feishu.cn/docx/XXX"
-# raw 是 JSON，提取 "content" 字段的 XML
-xml = json.loads('"' + raw_content.replace('\\"', '\x00').replace('\x00', '\\"') + '"')
-
-# 找 h2/h3 标题
-heads = []
-for m in re.finditer(r'<(h2|h3)[^>]*seq-marker="([^"]+)"[^>]*>([^<]+)</\1>', xml):
-    heads.append({"tag": m.group(1), "seq": m.group(2), "title": m.group(3).strip(),
-                  "start": m.start(), "end": m.end()})
-
-# 对每个 h3，往后取所有 <p> 直到下一个 h2/h3
-qa = []
-for i, h in enumerate(heads):
-    if h["tag"] != "h3": continue
-    next_start = heads[i+1]["start"] if i+1 < len(heads) else len(xml)
-    seg = xml[h["end"]:next_start]
-    paras = re.findall(r'<p[^>]*>(.*?)</p>', seg, re.S)
-    cleaned = [re.sub(r'<[^>]+>', '', p).replace('&amp;','&').replace('&quot;','"').strip()
-               for p in paras]
-    answer = "\n".join(c for c in cleaned if c).strip()
-    qa.append({"seq": h["seq"], "question": h["title"], "answer": answer})
-```
-
-## 安全边界
-
-- ❌ **不擅自重启** robot 服务（master 已多次授权"只写不重启"，reboot 类需明确确认）
-- ❌ **不删除** 备份文件（保留至少 90 天）
-- ❌ **不修改** systemd 服务单元
-- ❌ **不替换** prompt.txt.example.* 模板
-- ✅ prompt 变大前估算 token（中文 1 字 ≈ 1.5 token），超 50K 主动提醒主人
-- ✅ 每次改动三重备份 + md5 校验
-- ✅ staging 目录保留在机器人上（方便回查）
-- ✅ 主人说"动"才 `systemctl restart`
+## 补充（add，审批积压恢复）
 
 ## 已知坑
 
-1. **scp + stdin 不通密码** — 必须用 pty+fork + base64 流式（上面有模板）
-2. **base64 分块不要超 70K** — `echo -n '...'` 命令行长度限制
+1. **scp + stdin 不通密码** — 用 `SSHClient.open_sftp()` 直接传文件（走 SSH 通道，安全等价于 base64 流式）。**`paramiko.pty.fork()` 在新版 paramiko 里不存在**（`AttributeError: module 'paramiko' has no attribute 'pty'`），技能示例里的 pty 流式路径已失效，**优先用 SFTP**。
+2. **base64 分块不要超 70K** — `echo -n '...'` 命令行长度限制（仅在 SFTP 不可用时用 base64 兜底）
 3. **`prompt.txt.example.capsule_salesperson` 不是当前 prompt** — 不要按它的 19KB 大小估算
-4. **KnowledgeRetriever 没启用** — A 档只换 rag.txt 是无效操作，主动告知主人
-5. **workspace 有 capsule/restaurant 模式** — 但当前机器人用默认模式（`load_base_prompt` 直接读 prompt.txt），换工作场景要慎重
+4. **KnowledgeRetriever 没启用** — A/B 档写 rag.txt 不会真的生效。**B 档仍然写 rag.txt 是为了"未来启用 RAG 时不用回头补"**，并在汇报里向主人标"当前不生效，备用"
 6. **conda env 名是 robot_env 不是 robot** — `conda activate robot_env` 才能进
+7. **`robssh.run(host, ...)` 只接裸 IP/hostname，不接 `user@host`** — 写 `ubuntu@192.168.x.x` 会触发 `socket.gaierror: Name or service not known`。`run()` 内置 USER/PASSWORD 常量已经写死，传纯 IP 即可。
+8. **机器人对话风格 — 反啰嗦原则**：主人在 2026-09-17 明确纠正"别人说话没听清不要二次确认，太啰唆"。**写新 prompt 或改现有 prompt 时，必须遵循**：
+   - ❌ 不要"二次确认语种"（"您是想用 X 语言吗"）→ 删掉，直接说"抱歉我没听清，请再说一遍"
+   - ❌ 不要"身份确认阶段"反问（"请问您是在和我说话吗"）—— v2 教训，治"×6 次反问"
+   - ❌ 不要"硬字数限制+禁令堆叠"—— v8 教训，对话破碎。改用 v9 的"一轮一个信息点+自然完整句"
+   - ✅ 治啰嗦要"限信息密度不字数"：精简且自然
+   - ✅ 所有 fallback 话术（F04-F06）必须简洁：一句"抱歉我没听清"、一句"请联系现场工作人员"，不要长篇
+9. **改 prompt 里 G/F 语料文案必须同步 tts_list**（2026-09-20 321 餐厅门口改版）：`robot_v2_2.json` 顶层的 `tts_list` 是 **dict 不是 list**（41 个键，值是 `{"description": "中文\n英文"}` 对象），改了 prompt.txt 里 G/F 条目后不同步点播就会念旧文案（如"祝还展愉快"）。另：语料区用弯引号 ’ 不是直引号 '，替换脚本 mismatch 时先查引号字形。
 
-## 最近一次执行记录（2026-09-12 · autolife-robot-309）
 
-- 任务：小梅沙项目销售百问 → 机器人知识库 + 人脸迎宾 + 精度迭代
-- 最终版本：**v10-reading**（md5 `9ea681d65ab392e2e5a732fdacdec773`，122042 B，~48K token）——**主人现场测试通过"非常完美"**
-- 数据源：主人提供的 docx 原件（265 条 Q&A + 10 个表格，比飞书版表格更全）
+## 补充（patch，审批积压恢复 4108d469）
 
-## prompt 版本演进史（v1→v10，关键路径）
+## sing_song 唱歌质量配方（2026-09-20 实验矩阵验证，321）
 
-| 版本 | 改动 | 结果 |
-|------|------|------|
-| v1 (B档初版) | 原 prompt + 265 条平铺（250字截断） | 检索不准、答相似问题 |
-| v2 | 删"身份确认"反问 + 答短规则（治"是在和我说话吗"×6次） | ✅ 反问消失 |
-| v3 | 每条加 [关键词] 前缀 + 规则0"默认小梅沙" | 部分改善 |
-| — | settings: `enable_hybrid_vad=true`（视觉+音频融合断句） | ✅ ASR 断句变稳 |
-| v5 | 按 20 章节分组 + Q编号 + 51 个重复条目打住宅/商墅标签 + 防混淆规则 | ✅ 相似问题混淆大减 |
-| v6-full | 每条加「核心：」行（数字句前置）+「另问：」口语变体 + docx 表格全量 + 截断放宽到 500 字（精度优先） | ✅ 数字类精准 |
-| v7 | 高频速查卡（人工精选，头部注意力区）+ 版本标识 + 防编造规则（物业费/绿化率/交付/学校/售价文档里没有→严禁编造，引导咨询销售顾问）+ 精细澄清策略 | ✅ 稳定基线 |
-| v8 | ❌ 硬字数限制（两句话/50字）+ 裸数字示范 + 四连禁令 | **失败**：过度矫正，对话破碎不可用，已回滚 |
-| v9 | 「自然短答」：限信息量不限字数——一轮一个信息点+一句自然完整句+渐进披露（追问才展开）+ 数字自然读法（2400X5500→"2.4米宽5.5米长"）+ 示范改自然风格 | ✅ 干练不冷 |
-| v10 | 地块编号逐位中文读法（"02-09"→"零二零九地块"，防 TTS 读成"二月九号"），语音修正区+规则7 双处加固 | ✅ **主人测试通过** |
+背景：`qwen3-tts-instruct-flash-realtime` 唱歌默认是"赶着念"（5.3字/秒 vs 真唱 1.5-3），需要配方调教。
 
-## 关键经验（血泪教训）
+**冠军配方（D3）**：① 歌词每字加 `～`（拖音）；② instructions 只描述唱法节奏（「节奏非常舒缓：每个字唱满两拍，每句末字拖长音三拍收尾」+“绝对不要用说话的方式念歌词”）；③ 默认语速不加 speech_rate。
 
-1. **v8 教训**：治啰嗦不能限字数，要限信息密度。硬字数上限+裸数字示范+禁令堆叠 → 机器人变报数据库的，对话破碎。正确配方是 v9 的"一轮一个信息点+自然完整句"。
-2. **速查卡必须人工精选**：自动匹配的速查卡抓错条目（"车位配比"抓成户型表），放在注意力最高区错一条比没有更糟。
-3. **防编造规则不可少**：知识库没有的信息（物业费/绿化率/交付时间/学校/售价），模型会瞎编——明确列出来让它"引导咨询销售顾问"。
-4. **重复问题必须打标签**：265 条里 51 个问题文本跨章节重复（住宅/商墅同名不同值），不打标签必然混淆。
-5. **「核心：」行是精度杀手锏**：数字句前置，模型第一眼就是精确值，不被营销长文带偏。
-6. **TTS 读法坑**：XX-XX 格式会被读成日期，必须让模型输出逐位中文（"零二零九地块"）；1 在编号里写"幺"。
-7. **ASR 配置**：`gummy_chat`(one-shot) → `qwen_realtime`(流式) 更准；`enable_hybrid_vad=true` 视觉+音频融合断句治嘈杂环境。
-8. **验证脚本自己也会错**：count("核心：") 会把格式说明里的示例也算进去，要行首正则统计。
+**踩坑实测数据**：
+- C1 歌词里嵌简谱注记（「音符 5 5 6 5 1 7」）→ 注记被念出来（ASR 转录实证），内容污染 ❌
+- D4 + speech_rate 0.75 → 18.5s 真唱节奏但尾部自加内容（「呵呵，祝你生日」）❌
+- D3 配方 → 12.4s，24 稳定音符（=生日歌乐理 24 音），内容 100% 干净 ✅
+- instructions 写「四句旋律逐句重复」→ 诱导模型多唱一遍 ❌（改写为「只唱歌词里写的四句，唱完即收尾，不要自己加唱任何重复句」）
 
-## settings.toml 最终状态（309）
+**验证方法（免耳朵）**：合成→WAV→基频 autocorrelation 分析（字/秒：真唱 1.5-3.5、念 4-6；稳定音符数；音域半音）+ `qwen3-asr-flash` 转录验证内容纯净（content 只放 input_audio 不放 text，否则 400 Role 错误）。
 
+## 唱歌功能（2026-09-20 已下线，321）
+
+**结局**：play_song 预录方案（离线 instruct-flash 生成 WAV+工具播放）技术上全链路跑通（生成/验收/上机/`speaker_play_pcm_data` 播放修复），但管理员现场验收**效果不达标**，方案整体下线：工具/prompt 段/tts_list 歌曲条目已全部回滚（备份链 prompt/config/init 三份 `.bak.pre-playsong.*`），四首 WAV+工具脚本归档 `/home/ubuntu/disabled_tools_321/`（play_song.py.disabled.20260920 + 歌曲_*.wav，如需复活直接搬回）。不要再走 TTS 合成唱歌这条路——离线 flash 各音色离真人伴奏级仍有明显差距，属天花板问题非工程问题。
+
+**架构（供复盘）**：离线 `qwen3-tts-instruct-flash` 工作站批量生成→ASR+F0 硬验收→冻结 WAV（24k/mono/16bit）→`assets/tts/wav/歌曲_*.wav`→`robot_tools/play_song.py` 读 PCM 送 `speaker_play_pcm_data`。
+
+**关键坑**：① 工具加载器要模块级 `TOOL_SCHEMA` dict + `run(arguments, ai_mgr)`，写 `get_tool_spec()` 会报 `Tool 'xxx' missing TOOL_SCHEMA` 被静默跳过；② 音色口吃差异大：Ethan 男声易字重复（“祝你你”），验收必须含口吃黑名单检测，Cherry/Serena 最稳；③ `response.audio.data` 默认空串，音频在 `url` 字段（OSS 临时链接直下）；④ MiniMax music API 已对新用户关停（2153），ACE-Step ZeroGPU 匿名配额约 180s/24h 极易耗尽——离线 instruct-flash 是当前唯一稳定生成端；⑤ **`speaker_play_audio_data` 要 `AudioData` 对象（内部调 `.get_raw_data()`）不是裸 bytes**——裸 PCM 有专门接口 `speaker_play_pcm_data(pcm, sample_rate, channels, sample_width)`，播 WAV 文件优先用它。
+
+**曲库验收数据**（生日快乐 Serena 6.6s/两只老虎 Serena 11.1s/新年好 Chelsie 10.2s/欢乐颂 Cherry 9.9s，全部音域 15-30 半音内容干净）。
+
+## AI 对话工具扩展套路（2026-09-22 · 323 高德三件套实战验证）
+
+给机器人 AI 对话加新查询能力（天气/美食/门店/路线类）的标准四件套：
+
+**① 工具文件** `robot_tools/<name>.py`：模块级 `TOOL_SCHEMA` dict + 模块级 `run(arguments, ai_mgr)` 函数——照抄 `get_weather_by_gaode.py` 模子（类写法/`get_tool_spec()` 会被 "Tool missing TOOL_SCHEMA" 静默跳过）。`__main__` 自测入口直跑验证。key 从 `PROGRAM_SETTINGS["app_settings"]["ai_chatbot"]["amap_key"]` 读（settings.toml 在包根 `autolife_robot_vision/settings.toml`）。
+**② 注册** `robot_tools/__init__.py` 的 `ENABLED_TOOLS` 列表加名字。
+**③ prompt**：照 `## get_weather_by_gaode` 节的模子加使用说明——触发时机 + `<tool_call>` 示例 + 自然话术指导（挑2-3家说，别念列表）。
+**④ 重启** vision → sleep 25 → face-detection；journal 验证 `Loaded external tool schema: <name>` + `Successfully loaded system prompt`。
+
+**高德 API 实测可用**（amap_key 全能）：geocode(地理编码)、place/around(周边POI)、place/text(城市POI搜索)、direction/driving|transit|walking(路线) 全通；distance(测距)、regeo(逆地理)、inputtips、place/detail v3(含tel/photos) 也通。**无权限**：direction/bicycling(骑行 SERVICE_NOT_AVAILABLE)、place/detail v5。323 会场坐标写死模子：长沙智谷 `112.864727,28.117392`。
+
+**323 工具清单**（v2_2, 2026-09-22）：get_current_time/get_system_info/control_robot_action/get_weather_by_gaode/search_nearby_food(周边2km美食)/search_place(周边3km门店)/search_route(驾车+打车费/公交换乘/步行，目的地geocode+模式自动选)/search_attractions(城市级景点)/search_knowledge_base/search_online。全部机上直跑验证。
+
+**返回值铁律（管理员 2026-09-22 指令）**：工具返回值是给模型读的，不是给人读的——禁止"指令已发送/正在执行中/执行结果以实际为准"等机器话术（模型会复读！）。成功返回数据本身或极简确认（如 `"好"`），错误返回 `{"error": "..."}`。prompt 同步加禁词铁律段。
+
+**v2_2 文本工具调用 vs 321 native_fc**：323（vision 2.2.13）是文本 `<tool_call>` 模式（journal 标记 `_handle_text_tool_calls`），无 native_fc 四层配置——别把 321 的 `qwen_native_fc` 配置搬到 323。
+
+## 已验证动作库模板（2026-09-19 · 321 实测）
+
+**handshake 握手**（管理员评价"非常完美"）：文献式三阶段编排 + 低姿态。13 帧全序列（直接可复用）：
+```json
+[{"type":"move","right_arm":[5,0,-12,-50,20,0,0],"duration":1.2},
+ {"type":"move","right_arm":[15,0,-20,-70,30,0,0],"right_dexteroushand":[0,0,0,0,0,0],"duration":0.8},
+ {"type":"move","right_arm":[14,0,-19,-68,30,0,0],"duration":0.4},
+ {"type":"wait","time":0.3},
+ {"type":"move","right_arm":[16,0,-17,-65,30,0,0],"right_dexteroushand":[0,300,300,300,300,0],"duration":0.35},
+ {"type":"move","right_arm":[13,0,-21,-73,30,0,0],"duration":0.35},
+ {"type":"move","right_arm":[16,0,-17,-65,30,0,0],"duration":0.35},
+ {"type":"move","right_arm":[13,0,-21,-73,30,0,0],"duration":0.35},
+ {"type":"move","right_arm":[16,0,-17,-65,30,0,0],"duration":0.4},
+ {"type":"wait","time":0.3},
+ {"type":"move","right_arm":[14,0,-19,-68,30,0,0],"right_dexteroushand":[0,0,0,0,0,0],"duration":0.4},
+ {"type":"move","right_arm":[5,0,-12,-50,20,0,0],"duration":0.8},
+ {"type":"move","right_arm":[-20,0,0,-110,0,0,0],"duration":1.2}]
+```
+设计要点：①三阶段（伸手钟形速度/接触摇 2.5 次/原路收回）源自 Frontiers Robotics 2022 握手研究；②手位 (前方41cm, 高0.97m 腰胸之间)——首次设计 1.15m 太高被管理员纠正，降 18cm 后完美；③灵巧手：伸时张开、摇时四指收 30%（300）模拟握、收时松开；④摇动肘主导 ±4°。wave（关键帧版）同样保留在 321 动作库中。
+
+## 最近一次执行记录（2026-09-17 · autolife-robot-321 · 情感强化版）
+
+## 补充（patch，审批积压恢复 bd612580）
+
+## 321 语音+动作完整配置流程（2026-09-19 全链路实战验证，管理员评价"非常完美"）
+
+### 四层配置（缺一不可）
+
+**① 通道层**：`autolife_robot_vision/settings.toml`
 ```toml
-face_detection_enabled = true        # 人脸识别
-face_tracking_enabled = true
-ai_chatbot_enabled = true
-tts_enabled = true
-TTS_PROVIDER = "qwen"
-asr_provider = 'qwen_realtime'      # 流式 ASR
-enable_hybrid_vad = true            # 视觉+音频融合断句
-enable_input_vad = true
-start_conversation_on_launch = true
-enable_idle_action_on_response = true   # AI 回话时随机 idle 小动作
-chat_active_timeout = 30            # 对话锁定期 60→30
+[app_settings.ai_chatbot]
+realtime_api_provider = "qwen_native_fc"   # NOT 普通 qwen（无 function call）
+asr_provider = 'qwen_realtime'              # 流式 ASR
 ```
 
-## face_detection.json 最终状态（309）
+**② 工具开关层**（藏最深！）：`autolife_robot_vision/configs/robot_v2_2.json`
+```json
+{"audio": {"qwen_native_fc": {"realtime": {"tool_call_enabled": true}}}}
+```
+不开则日志报 `Qwen Native FC tool calling disabled by config`，模型自动用 qwen3.5-omni-plus-realtime。
 
-- mode: slideshow_mode（轮换循环）
-- 动作池: right_wave → left_wave → idle1 → idle2 → idle3 → bow_salute（无 scissors_hand）
-- 欢迎语: "你好，我是小智，有什么可以帮你吗？" / "您好，欢迎光临，想了解什么可以问我。"
-- time_interval: 3 秒
+**③ 动作层**：`autolife_robot_arm/robot_action.json`（关节关键帧）+ `robot_tools/control_robot_action.py`（enum三处：enum列表/enumDescriptions/valid_actions）
 
-## 备份链（309 上，prompt.txt.bak.*）
+**④ 触发词层**：`assets/prompt/prompt.txt` 动作调用规则段（动作清单 + 触发词映射：说"X"调 action_name）
 
-original-2972B → v1-qa → v2 → v3 → v5 → v6 → v7 → v8 → v9 → v10(当前)
-
-回滚命令模板：
+### 生效与验证
 ```bash
-TARGET=/home/ubuntu/miniconda3/envs/robot_env/lib/python3.12/site-packages/autolife_robot_vision/assets/prompt/prompt.txt
-cp $TARGET.bak.v9-20260912 $TARGET   # 例：回 v9
-systemctl --user restart vision-service.service
+systemctl --user restart arm-control-service vision-service
+sleep 3 && systemctl --user restart face-detection-service   # 硬规范：vision/face 联动
 ```
+日志验证链（journalctl -u vision-service）：
+```
+Qwen function call: xxx, control_robot_action, {"action_name": "handshake"}
+→ Received function call request from AI
+→ Qwen tool executed: 成功发送动作：handshake
+```
+arm 侧（-u arm-control-service）：`Executing action: handshake`
+
+### 运动学关键事实（URDF 仿真实测）
+- 肩外展正方向仅 ±17°，腕部最高 z≈1.36m——手臂举不过头顶
+- 左右臂上举路径不对称：左臂靠肩内旋-160~170、右臂靠肩外旋+165（镜像参数无解）
+- 握手自然高度 0.97m（腰胸之间），1.15m 偏高
+- 静态重叠对（颈/腰 2 对 + 肩外展 20° 时左上臂碰腰）要加入碰撞白名单
+
+### 同类故障对照（全部实测）
+- 听懂不动作→查①②；wave 播放崩（pkl bug）→重定义关键帧；开机通信丢→arm-control 加 ExecStartPre sleep45 错峰

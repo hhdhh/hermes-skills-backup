@@ -41,6 +41,22 @@ $ crontab -l | grep -i hermes
 3. 验证 `crontab -l | tail -5`
 4. **不直接 `crontab -e`** — agent 改不动 vim，**用文件流式**：`cat existing + echo new | crontab -`
 
+## 脚本在 cron 里调用 `systemctl --user` 的铁律（Ubuntu）
+
+cron 环境没有 `DBUS_SESSION_BUS_ADDRESS` / `XDG_RUNTIME_DIR`，`systemctl --user` 会直接报 `Failed to connect to user scope bus`——健康巡检/看门狗类脚本因此把活着的 gateway 误判为挂掉，进入「每 5 分钟告警 DM + restart」风暴。**任何 cron 脚本要用 systemctl --user，必须显式注入**：
+
+```python
+SYSTEMCTL_ENV = {
+    "PATH": "/usr/bin:/bin:/usr/local/bin",
+    "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}",
+    "DBUS_SESSION_BUS_ADDRESS": f"unix:path=/run/user/{os.getuid()}/bus",
+}
+subprocess.run(["systemctl", "--user", "is-active", "hermes-gateway.service"],
+               capture_output=True, text=True, env=SYSTEMCTL_ENV)
+```
+
+改完用 `env -i HOME=$HOME python3 <script>` 模拟 cron 干净环境验证一遍，确认不产生误报告警再交给 cron。
+
 ## 不要做
 
 - ❌ `hermes cron create` 在 gateway 进程死了的情况下 — 不会跑
