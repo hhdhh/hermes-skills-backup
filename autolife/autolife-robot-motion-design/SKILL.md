@@ -21,7 +21,10 @@ description: Use when 为 AutoLife 机器人设计/新增/调试 AI 对话肢体
 播放端: arm-control-service 的 node_robot_action_service_<domain>_<robot_id>
 ```
 
-## 标准流程（6 步）
+## 标准流程（7 步）
+
+### 0. 先查资料再设计（管理员 2026-09-28 指定，硬流程，不许跳）
+新动作不兴凭空硬凑。先 web_search 找：① 人类做该动作的运动学资料（动作分解教程/关键帧角度/生物力学描述，中文教程、舞蹈/体操术语、物理治疗资料都好用）；② 公开仿人机器人做同动作的案例（URDF 演示、论文关节角、开源动作库）。提炼成目标关节角序列草案，再适配 robot_v2_2 的关节极限（人能做到的机器人未必：肩外展仅±17°、肘单向弯曲——见坑 4；不适处用最近可达姿态近似并在预览时说明差异），然后才进仿真优化。
 
 ### 1. 拉动作库 + 设计关键帧
 ```python
@@ -45,10 +48,21 @@ import paramiko
 
 ### 4. 渲染预览图（三视图：正面/侧面/俯视——主人明确的规范）
 ```python
-# pybullet TINY renderer 可用，但模型是浅灰白色(RGB 150-230)
-# 必须增强对比: 模型像素压暗*0.55 + 浅色背景，否则人眼难辨认
-# 发图前自检像素量（宽阈值 sum<730），防白图事故
-# 渲染故障时用骨架图兜底: getLinkState 关键关节世界坐标 + PIL 画肩-肘-腕连线
+# 【2026-09-28 实证定案，/home/kk/robot-sim/render_front_calibration.py 可直接复用】
+# 相机: p.computeViewMatrixFromYawPitchRoll([0,0,0.84], 2.2, yaw, pitch, 0, 2)
+#   yaw 约定(segmask遮挡测试逐角验证): yaw=90=正面 | 270=背面 | 0/180=侧面
+#   斜视角: 左前=yaw65 / 右前=yaw115 (±25°)；pitch: -2≈平视, -17≈俯视15°
+#   ⚠️ p.computeViewMatrix(eye,target,up) 输入向量有轴置换 quirk，自实现 gluLookAt
+#   遮挡对但取景挤角落——都弃用，只用 FromYawPitchRoll
+# 解码(头号坑): TINY 的 rgb buffer 是 RGBA 且行序自上而下:
+#   Image.frombytes("RGBA",(w,h),bytes(rgb)).convert("RGB")   ← 必须 RGBA 不翻转
+#   按 RGB 步长解码 = 行错位废图（旧脚本三视图全废的根源！render_previews.py 等旧图全不可信）
+#   加 rawdecoder "RGBA",0,-1 翻转 = 上下颠倒废图。换 GPU/EGL 渲染器前须重验
+# 验证(必须): RGB 颜色计数在 TINY 光照下不可靠(同色异答/量化)，一律用 segmask:
+#   getCameraImage 第5返回值 bytes+struct 按 body id 数像素
+#   ① 遮挡测试定朝向: 前方红块(+雷达侧)可见 px>200 且身后蓝块 px=0 才算正面
+#   ② 每面板完整性: 机器人 px>8000 且 x 重心 60~340（400 宽面板）
+# 增强: 模型像素压暗*0.5 + 浅背景(236,239,243)；骨架图兜底: getLinkState + PIL 画线(应急)
 ```
 
 ### 5. 主人确认后部署（三重备份 + md5）
@@ -72,7 +86,7 @@ systemctl --user restart vision-service.service && sleep 3 && systemctl --user r
 
 1. **动作能在库里有但 AI 调不动 → 先查 provider 三件套**：普通 `qwen` 模式无 function call（AI 只嘴上说）；必须 `settings.toml` 切 `qwen_native_fc` **且** `configs/robot_v2_2.json` 的 `audio.qwen_native_fc.realtime.tool_call_enabled: true`（默认 false，藏三层嵌套，settings.toml 无对应项）。开关没开时日志只报一句 `Native FC tool calling disabled by config`。详见 skill `autolife-robot-prompt-ops` 坑 9。
 2. **pkl 动作播放崩溃**：`[{"type":"pkl"}]` 类型（wave/idle 等出厂录制）回放触发 `arm_action_display._execute` 异常 + rclpy `ValueError: Logger severity cannot be changed between calls` 连锁，动作线程死亡、手臂僵住且无外部报错。**解法：重定义为关键帧动作**（move+duration 序列）。
-3. **预览图白图事故**：TINY renderer 输出的模型是浅灰白色，严阈值判“有无内容”会把真模型当空白；发图前必须宽阈值（sum<730）验证像素量，且给模型压暗/换背景增强对比。骨架图（关节坐标 PIL 画线）是可靠兑底。
+3. **三视图废图三级根因（2026-09-28 实锤）**：① 解码——TINY buffer 是 RGBA、行序自上而下，旧脚本按 RGB 步长 `frombytes("RGB",...)` 解码=行错位废图，加翻转=上下颠倒，唯一正确解 `frombytes("RGBA",...)` 不翻转（robot-sim 里 render_previews.py 等旧脚本出的旧图全不可信）；② 相机约定——YPR 的 yaw=90 才是正面（前雷达在 +x），不是 0/180；`computeViewMatrix` 轴置换、自实现 lookat 取景挤角落，均弃用；③ 验证工具——RGB 颜色计数在 TINY 光照下不可靠（红蓝像素数完全相同的假象），必须 segmask 按 body id 数像素。完整配方与自检模板：`/home/kk/robot-sim/render_front_calibration.py`。正面视角规范角待管理员标定后回填。
 4. **手臂运动学极限（robot_v2_2 实测）**：肩外展正方向仅 ±17°、肘单向弯曲（左 0~149°/右 -149°~0）——人手的“侧平举”做不到。但**腕可达 z≈1.99m（远超头顶 1.5m）**，路径是肩内旋 si≈-160~-175°（左）或肩外旋 so≈+165°（右）。
 5. **左右臂达高位的关节路径不对称**：左臂靠 si 负极限、右臂靠 so 正极限。强制左右镜像参数永远无解；分别优化再按手部位置对齐对称。扫描范围必须覆盖 si/so 全量（±166°），只扫 ±90 会误判“举不过头顶”。
 6. **动作设计安全规则（主人要求）**：会自碰撞的轨迹拆成多个子动作插入安全中间姿态；结束复位沿执行路径逐帧倒序退回（原路返回），不直接跳回零位；对话中复位需二次确认。

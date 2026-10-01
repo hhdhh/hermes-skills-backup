@@ -8,6 +8,13 @@ _external/
 **/__pycache__/
 *.pyc
 
-# 系统
+# 系统文件/临时
 .DS_Store
 *.log
+Thumbs.db
+
+# 本地私有数据不进备份仓库（恋爱档案等敏感记忆）
+goutoujunshi/.data/
+
+# 深克隆临时件
+goutoujunshi/.git/

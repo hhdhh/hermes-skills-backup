@@ -83,5 +83,8 @@ Claude Code: NO `/v1`. Hermes aliases: WITH `/v1`. Codex: no `/v1` (paths are pe
 ### P3: shadowed binaries lie about version
 An npm-installed CLI (e.g. `codex` in `~/.npm-global/bin`) shadows the apt one (`/usr/bin`) on PATH and reports a different version than `dpkg -s` claims. When behavior doesn't match the installed package, run `type -a <cli>` and test each binary by absolute path. Keep exactly one install per CLI.
 
-### P4: token-bearing config files need 0600 and no backup copies in synced dirs
+### P4: codex 0.157 已废弃的顶层键与 env_key 提供方
+`disable_response_storage` 和 `network_access` 在 codex 0.157+ 被忽略并报 unrecognized setting 警告——直接删掉，不要照抄旧配置。用 `env_key = "SUB2API_API_KEY"` + `requires_openai_auth = false` 的提供方时，密钥从环境变量读，必须导出（写进 ~/.bashrc），auth.json 可同步留一份作 fallback。`model_catalog_json` 指向的文件必须真实存在，否则自定义模型不生效；目录文件可仿照 ~/.codex/models.json 的字段（slug/context_window/supported_reasoning_levels 等）手写。冒烟命令：`codex exec --skip-git-repo-check "1+1"`，确认输出头 provider/model 行正确且无 warning。
+
+### P5: token-bearing config files need 0600 and no backup copies in synced dirs
 `settings.json` / `auth.json` hold live keys: chmod 600, keep backups outside any synced/git directory, and never paste the token into chat logs or reports.

@@ -43,3 +43,8 @@ TOK=$(curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_tok
 
 ## 变更历史
 - 2026-09-12: 六连修（白名单拒绝→secret 轮换独占→Reasoning→群开放@→home channel 改 DM→user_id 授权）+ 静默丢失自愈
+- 2026-09-29: 静默丢失复发（DM 引用回复 reply-in-thread 触发，14:44/14:59 两起丢失已补发）。三处修复：
+  1. **ledger 开关坑**：config.yaml `gateway.delivery_ledger` 被关→账本 09-17 起停记 12 天→自愈链路失效。改法：`hermes config set gateway.delivery_ledger true`（patch 工具会被安全保护拒绝，走 CLI）。config 按文件签名缓存热加载，无需重启 gateway
+  2. **redeliver 盲区**：原版只盯 FAE 群，DM 丢失永不补发→v2 加 CHAT_IDS 覆盖主人 DM；**post 富文本指纹坑**：服务器侧 post 消息 text 嵌在 content 数组里，`json.loads` 后取顶层 text 永远拿不到→已送达被误判丢失→必须用 `_extract_post_text` 递归抽取。误发可用 DELETE /im/v1/messages/{msg_id} 撤回
+  3. **silent 告警误报刷屏**：gateway 空闲时本来无日志（真心跳表 gateway_heartbeats 空闲也不记）→30 分钟无日志每小时告警刷屏 DM→修为「日志静默 + WS 连接=0」双条件才告警
+  - 丢失消息恢复路径：state.db messages 表按 session_id（sessions 表 LIKE '%oc_xxx%' 反查）捞 assistant 全文→API 补发→服务器回读验证

@@ -58,15 +58,17 @@ timeout 120 包住——doctor 偶尔卡在网络检查
 skills 数不丢、版本号正确、config 版本迁移完成、`Version files consistent`。
 
 ### 7. 网关重启（进程层）
-跑着的网关仍是旧 mmap 库，重启才切新代码。systemd 环境下 agent 自身无法直接 restart（安全机制拦自杀）——两条路：
-- 用户在场：让用户跑 `~/restart-hermes-gateway.sh`
-- 用户远程授权：走 cron 通道（见 `autolife-gateway-restart-from-inside` 技能）
+跑着的网关仍是旧 mmap 库，重启才切新代码。先判自己在不在网关进程树内：`systemctl --user show hermes-gateway.service -p MainPID --value` 对照 `pstree -sp $$`——
+- **不在树内**（如从 hermes-studio 桌面会话跑）：可直接 `systemctl --user restart hermes-gateway.service`；重启属外部操作，先向用户确认一声再执行。
+- **在树内**（安全机制拦自杀）：让用户跑 `~/restart-hermes-gateway.sh`，或用户远程授权时走 cron 通道（见 `autolife-gateway-restart-from-inside` 技能）。
 
 ## 坑
 
 - **pip 安装的 `hermes update --check` 在 git 安装上超时**（它内部同样 fetch github）；直接 git fetch 后台跑更快。
+- **GitHub 代理选型（2026-10 实测）**：直连 fetch 240s 超时；ghfast.top 对 `ls-remote` 返回 403（证书/风控变了，别再用）；**gh-proxy.com 可用**（ghproxy.cc 证书过期、gitclone.com 502）。先 `timeout 20 git ls-remote https://gh-proxy.com/https://github.com/<owner>/<repo>.git HEAD` 探活，再定向 fetch 单 tag：`git fetch https://gh-proxy.com/https://github.com/<owner>/<repo>.git tag <TAG> --no-tags`（比 --tags 快得多）。
 - checkout tag 后 `pip install -e .` 别忘——只切代码不同步依赖会 import 报错。
 - doctor --fix 前确认 config 已备份（第 2 步）；迁移是单向的。
 - npm vulnerabilities 提示是老毛病，不阻塞升级。
+- **重启验证只看新时间戳之后**：旧进程下线时 journal 里的 Lark `ConnectionClosedOK / receive message loop exit` 是正常断连噪音，别误诊为升级失败；验证 = 新 MainPID + 启动横幅后 `connected to wss` + WebUI 200，且重启时间戳之后无新增 error。
 - 回滚：`git checkout <old_head> && .venv/bin/pip install -e . -q && 重启网关`（old_head 存在备份目录）。
 - **改 provider/model 后检查 cron job**：未 pin 的 job 会 drift_skip 静默不跑——`hermes cron list` 看 last_status，error drift_skip 的用 `hermes cron edit <id> --provider <新> --model <新>` 重新 pin。错误详情在 `~/.hermes/cron/output/<job_id>/` 的 md，gateway 日志无痕。

@@ -26,6 +26,8 @@ description: Use when 要在飞书云空间建文档给运营同事看，或主�
 
 ## 坑
 
+- **lark-cli 被 TLS reset 时的替代通路（2026-09-28 实测）**：lark-cli 整体挂掉（token 刷新都 reset）时，用 curl + user UAT 走 upload_all(.md)→import_tasks(转docx)→raw_content(回读) 全链，详见 skill: lark-cli-go-tls-reset-bypass「文档创建的同款绕过」。注意 bot TAT 缺 drive 上传 scope（403 forbidden），必须 user 身份；UAT 过期用 refresh token + client_id + client_secret 刷。
+- **markdown import 保真好**：12 章+3附录+37 锚点全命中；代码块/表格/标题层级保真；但 import 转换不是实时的（轮询 job_status，~10s）。
 - **`+fetch` 无 `--url` 标志**：文档定位用 `--doc <token-or-url>`；位置参数也不支持。+create 的 `--parent-token` 与 `--parent-position` 互斥。
 - **markdown 导入的表格/标题层级基本保真**，但 callout/画板等富块需 XML 格式或事后插入；检修记录级别的文档用 markdown 就够。
 - **建库文件夹名含内部名称时**：飞书 API 重命名文件夹器 PATCH `/open-apis/drive/v1/files/<token>?type=folder` 报 981002 params error 是接口限制；不必硬重试——新文档用新署名即可，folder_token 不变不影响使用。

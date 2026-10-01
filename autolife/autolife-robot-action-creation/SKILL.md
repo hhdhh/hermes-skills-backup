@@ -20,7 +20,9 @@ metadata:
 ## 流程总览
 
 ```
-主人描述动作 → 本地 pybullet 仿真设计关键帧 → 限位+碰撞验证 → 三视图预览图发管理员确认
+主人描述动作 → 【第0步·硬流程】网上查资料：人类动作运动学分解 + 仿人机器人同动作公开案例
+→ 提炼目标关节角草案 → 适配 robot_v2_2 关节极限（±17°肩外展/肘单向，不适处最近近似并注明差异）
+→ 本地 pybullet 仿真优化验证 → 限位+碰撞验证 → 三视图预览图发管理员确认
 → 确认后：三重备份 robot_action.json → 写入新动作 → 更新 control_robot_action.py 的 enum
 → 重启 vision+face（联动）+ logo-backend → 现场语音验证
 ```
@@ -40,7 +42,7 @@ metadata:
 
 ## Step 3: 三视图预览（管理员定的规范）
 
-**预览图一律三视图：正面 + 侧面 + 俯视（上面）**。渲染：`p.computeViewMatrixFromYawPitchRoll` + `ER_TINY_RENDERER`（无 GPU 可用）；取景用遍历所有 link AABB 求总包围盒（useFixedBase 时整机 getAABB 返回 0）。出图经飞书 im/v1/images 上传（image_type=message）+ post 富文本发管理员，等确认后才部署。
+**预览图一律三视图：正面 + 侧面 + 俯视（上面）**。渲染配方（2026-09-28 segmask 实证，详见 skill `autolife-robot-motion-design` 坑 3 与 `/home/kk/robot-sim/render_front_calibration.py`）：`p.computeViewMatrixFromYawPitchRoll` + `ER_TINY_RENDERER`，**yaw=90=正面**（前雷达在 +x；270 背面、0/180 侧面）；解码必须 `Image.frombytes("RGBA",(w,h),bytes(rgb))` 不翻转（按 RGB 步长解=废图）；质检用 segmask 按 body id 数像素（遮挡测试定朝向 + 每面板完整性），RGB 颜色计数不可靠。取景用遍历所有 link AABB 求总包围盒（useFixedBase 时整机 getAABB 返回 0）。出图经飞书 im/v1/images 上传（image_type=message）+ post 富文本发管理员，等确认后才部署。
 
 ## Step 4: 动作设计两条安全规则（管理员要求，写死）
 

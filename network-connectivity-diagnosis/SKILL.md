@@ -198,6 +198,23 @@ curl --noproxy '*' -m 6 -o /dev/null -w "%{http_code}" http://<内网IP>:<端口
 
 另：诊断命令避免 `curl ... | python3 -c "..."` 内联管道（curl 管解释器会触发安全扫描审批），先落临时文件再解析，减少打断。
 
+### Linux 客户端：间歇性抖动/丢包（不是全断）的两步快诊
+
+全 timeout 走 4 层模型；**时好时坏**（延迟几十 ms 到几秒波动、阵发丢包）另有两套常见根因：
+
+1. **WiFi 省电模式阵发微睡眠**（Intel 卡常见）：信号强（-51dBm）但到本地网关 ping 抖到秒级、10% 丢包，且同一时刻公网正常。修：
+```bash
+nmcli con modify <SSID> 802-11-wireless.powersave 2
+nmcli dev reapply <网卡名>
+```
+修后本地网关 ~5ms 零丢包即实锤。
+
+2. **公网 DNS 随出口拥塞阵发失败**：同一域名一秒前解析成功、下一秒 `Temporary failure in name resolution`；UDP 53 查询和流量一起被丢。域名直连 IP 可验证；治本靠出口，治标在长驻服务里给 getaddrinfo 加进程内缓存（成功结果 600s TTL，解析失败用过期缓存兑底）。
+
+诊断口诀：**本地网关 ping vs 公网 ping vs 内网目标 ping 三路分开测**——只本地抖=省电模式；公网抖+DNS 失败=出口拥塞；只有某内网目标抖=那条链路/WiFi 跳数问题。
+
+另：插着网线不等于有第二条出网路——常见 USB/板载口只通本地网关不通公网（无默认路由/出口限制），切路由前先 `ping -I <网卡> <公网IP>` 实测，别盲切 metric。
+
 ## 常见诊断陷阱
 
 | 坑 | 表现 | 真相 |

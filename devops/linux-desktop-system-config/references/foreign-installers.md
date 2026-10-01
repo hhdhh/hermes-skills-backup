@@ -91,6 +91,19 @@ These are separate milestones; report them separately:
 
 Never call the task installed when only the installer was downloaded or when a handoff script is waiting for the user's password/UI confirmation. If the interactive step remains, state the exact blocker and give one invocation, but leave the task status incomplete.
 
+## Case note: 2019-era `.deb` on Ubuntu 26.04 — vendored-lib shadowing fix (verified 2026-09-27)
+
+NetEase Cloud Music 1.2.1 (last Linux build, 2019) failed to start on Ubuntu 26.04: its wrapper prepends `libs/` to `LD_LIBRARY_PATH`, and vendored 2019 `libmount.so.1`/`libselinux.so.1` shadowed system versions — system `libgio` needs `MOUNT_2_40`, loader aborts. Chasing single libs (LD_PRELOAD) just moved the failure down a chain (glib → pango).
+
+Root fix (no sudo, all user-space, reversible):
+1. `mkdir ~/ncm-libs`; symlink every `libs/*.so*` + `libs/qcef/libcef.so` into it.
+2. Delete symlinks whose name ALSO exists in `/usr/lib/x86_64-linux-gnu/` — **except `libQt5*`/`libqcef*`/`libcef*`**: mixed Qt versions abort with `Cannot mix incompatible Qt library (5.9.5) with (5.15.18)`; mixed system-stack libs abort with missing symbol versions. Keep vendored Qt whole, let everything else resolve to system.
+3. Write `~/.local/bin/netease-cloud-music` wrapper: `LD_LIBRARY_PATH=~/ncm-libs` + vendored `QT_PLUGIN_PATH`/`QT_QPA_PLATFORM_PLUGIN_PATH`, `exec` real binary.
+4. Copy system `.desktop` to `~/.local/share/applications/`, rewrite `Exec=` to the wrapper.
+5. Verify from a clean process table: `ps -C netease-cloud-music` alive ≥10 s, `xwininfo -root -tree | grep` shows the window, zero fatal lines in log.
+
+Pitfalls hit: CDN `d1.music.126.net` — plain HTTPS curl = 403 (need `Referer: https://music.163.com/` + browser UA + any `NMTID` cookie from a prior music.163.com request); plain HTTP works but throttled to ~250 B/s. Also `pkill -x` silently fails on >15-char process names — use `pkill -f 'name[c]'` bracket trick or kill PIDs.
+
 ## Case note: misleading `.dmg` from a platform-mismatched portal
 
 A nominal `.dmg` on an Ubuntu x86_64 host was only 33 bytes of UTF-8 text saying no valid download was available for the current system. The durable lesson is to inspect content and official platform support before mounting, converting, or installing. The vendor's desktop documentation listed Windows and macOS, not Linux. An official Windows bootstrap installer could be downloaded and verified as PE/NSIS, but Wine installation remained unverified because administrator authorization and interactive installer confirmation had not occurred. Therefore only the download—not installation—was complete.

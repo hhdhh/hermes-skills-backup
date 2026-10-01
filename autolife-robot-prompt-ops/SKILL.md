@@ -24,6 +24,21 @@ description: Use when the task involves autolife robot prompt ops.
 
 ## 补充（add，审批积压恢复）
 
+## 换场地迁移套路（2026-09-28 · 323 长沙论坛→广州办公室实战）
+
+**场景**：机器人从 A 场地搬到 B 场地，AI 对话整体改人设/地点。只改 prompt.txt 不够——工具层有硬编码残留。
+
+**必须检查的五层**（漏一层就穿帮）：
+1. `assets/prompt/prompt.txt`：人设/地点/知识库/欢迎语/告别语
+2. `robot_tools/search_nearby_food.py + search_place.py + search_route.py`：`VENUE_LOCATION` 坐标 + `VENUE_NAME`
+3. `robot_tools/search_attractions.py`：`city` 参数 + description 里的城市名和示例地名
+4. `robot_tools/search_route.py` 专属坑：geocode 的 `city=旧城市`（功能性 bug，新城市目的地编不出码）、transit 的 `city/cityd`、`__main__` 默认目的地
+5. `robot_tools/__init__.py` ENABLED_TOOLS：旧场地专属工具（如 query_seating 晚宴座位）要注释掉；同时确认 tts_list 有无旧场地文案
+
+**流程**：①机上用机器人自己的 amap key 跑 POI 搜索定位新场地精确坐标（geocode/geo 可能给同名错误点，用 place/text + citylimit 按区 adcode 搜才准）②本地改+py_compile+旧场地关键词全量 grep（城市名/旧坐标/adcode/旧场馆名/示例地名）③远端 `.bak.新后缀-时间戳` 备份→push md5 校验④机上直跑工具脚本实测（route/food 各一次）⑤restart vision+25s+face-detection 连动，日志验证 `Successfully loaded system prompt` + `Loaded external tool schema` 条数。
+
+**坑**：①amap 接口中文参数必须 urlencode（city=广州裸拼会 ascii encode 错）②robssh push 的本地文件名和远端可以不同名（prompt.txt.new→prompt.txt 直接推）③重启瞬间的 `rcl context invalid`/`Mic energy` 报错是旧进程 shutdown 噪音，不用管，看新进程 PID 的加载日志。
+
 ## 已知坑
 
 1. **scp + stdin 不通密码** — 用 `SSHClient.open_sftp()` 直接传文件（走 SSH 通道，安全等价于 base64 流式）。**`paramiko.pty.fork()` 在新版 paramiko 里不存在**（`AttributeError: module 'paramiko' has no attribute 'pty'`），技能示例里的 pty 流式路径已失效，**优先用 SFTP**。
@@ -66,6 +81,26 @@ description: Use when the task involves autolife robot prompt ops.
 **关键坑**：① 工具加载器要模块级 `TOOL_SCHEMA` dict + `run(arguments, ai_mgr)`，写 `get_tool_spec()` 会报 `Tool 'xxx' missing TOOL_SCHEMA` 被静默跳过；② 音色口吃差异大：Ethan 男声易字重复（“祝你你”），验收必须含口吃黑名单检测，Cherry/Serena 最稳；③ `response.audio.data` 默认空串，音频在 `url` 字段（OSS 临时链接直下）；④ MiniMax music API 已对新用户关停（2153），ACE-Step ZeroGPU 匿名配额约 180s/24h 极易耗尽——离线 instruct-flash 是当前唯一稳定生成端；⑤ **`speaker_play_audio_data` 要 `AudioData` 对象（内部调 `.get_raw_data()`）不是裸 bytes**——裸 PCM 有专门接口 `speaker_play_pcm_data(pcm, sample_rate, channels, sample_width)`，播 WAV 文件优先用它。
 
 **曲库验收数据**（生日快乐 Serena 6.6s/两只老虎 Serena 11.1s/新年好 Chelsie 10.2s/欢乐颂 Cherry 9.9s，全部音域 15-30 半音内容干净）。
+
+## 换场地/换身份迁移清单（2026-09-28 · 323 长沙论坛→广州办公室实战）
+
+机器人搬到新地点重写 AI 对话身份时，**prompt 不是唯一要改的**——工具层有五处硬编码会残留旧会场，必须一起迁：
+
+1. **prompt.txt** 人设/角色/欢迎语/知识库（旧活动语料整段清除，只保留公司信息段）。
+2. **工具 VENUE_LOCATION 坐标**：search_nearby_food/search_place/search_route 各自写死旧会场经纬度，不换则周边搜索/测距全错。
+3. **search_route 的 city 参数**：geocode 和 transit 两处 `city=`（功能性 bug 级：不换则新城市目的地编码失败或跨城路线）。
+4. **search_attractions 的 city**：城市级景点搜索写死旧城市。
+5. **query_seating 类活动专用工具**：活动结束要在 `robot_tools/__init__.py` ENABLED_TOOLS 里注释掉，否则访客问座位会翻出旧名单。
+6. **天气 adcode**：prompt 里工具示例的默认 adcode（广州海珠=440105）。
+7. **tts_list 点播文案**（configs/robot_v2_2.json）：检查有无旧活动残留。
+
+**新坐标获取**：高德 geocode 会把同名楼宇编到别的区（"华新中心"被编到花都）——**用 place/text POI 搜索 + citylimit=true + 区 adcode** 拿准确坐标（华新中心=113.340472,23.100632 琶洲大道68号磨碟沙地铁站B口）。
+
+**验证链**：机上直跑 `search_route.py <新城市地标>` 看距离合理 + `search_nearby_food.py` 看搜出的餐厅就在楼里 → 重启 vision→sleep25→face-detection → journal 验 `Loaded external tool schema` 数量 + `Successfully loaded system prompt` + 回显 instructions 确认新人设。
+
+**残留扫描命令**（本地改完必跑）：`grep -n "旧城市\|旧会场名\|旧坐标\|旧adcode" tools/*.py prompt.txt.new`——description 里的旧地名肉眼最容易漏。
+
+**搜索工具 description 也是给模型看的提示词**：里面写"长沙南站怎么走"这种示例会诱导模型输出旧城市内容，必须同步改。
 
 ## AI 对话工具扩展套路（2026-09-22 · 323 高德三件套实战验证）
 

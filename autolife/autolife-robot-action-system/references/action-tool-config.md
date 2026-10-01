@@ -1,5 +1,13 @@
 # 动作触发链配置速查（qwen_native_fc 双层开关）
 
+## 动作扩充快速通道（10-01 验证）
+
+两条路均已全管线验证，产物在 `~/gh-action-hunt/`：
+
+1. **toddlerbot 转化**（`convert.py`）：拉 hshi74/toddlerbot 的 motion/*.lz4（MIT），joblib 解出 qpos 轨迹→MuJoCo(=51,nu=30，XML 在 tbrepo/，须 sparse clone descriptions 全目录，MJCF 依赖 assets 相对路径)算左右手末端→pybullet 坐标下降 IK 拉到 AutoLife 末端目标（归一化 SCALE=AL臂展/TB臂展）→限位+碰撞过滤。贴地动作（俯卧撑/爬行/翻身）IK 自动拒绝＝质量过滤，8/59 可用，2xc/2xm 是镜像双版本去重取一。
+2. **末端航点 IK 自设计**（`design_actions.py`）：给定每帧末端相对肩位置(fwd,side,up)+节拍，自动解 7-DOF+全帧校验，14/14 成功率，比手写角度可靠得多。重要：IK 达不到的目标会静默钳到可达域边缘，上线前看预览图确认形态。
+复核（`verify_merged.py`）独立重跑限位/碰撞/末帧 home 三查；预览渲染（`render_previews.py`）首/中/尾三帧拼图；总表（`make_gallery.py`）出单文件 HTML(base64内嵌)。
+
 AI 对话触发动作需要两个开关同时打开，缺一不可：
 
 ## 第 1 层：settings.toml（provider 模式）
