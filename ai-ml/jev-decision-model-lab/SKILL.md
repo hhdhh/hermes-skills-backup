@@ -46,7 +46,7 @@ TypeSafe Jev = 单 token 打分决策模型（非自回归）：候选答案映�
 - `fae_system2.py`：System-2 LLM 复核模块（三原则），依赖 QWEN_HUB_API_KEY
 - 四个 v6 专家 checkpoint：`checkpoints/fae6_spec_*/`
 - 真实语料金标：`../real-corpus/gold_v9.json`（44 单人手标注）+ `eval_v9.py` + `build_gold_v9.py`
-- 飞书分诊 bot demo：`../real-corpus/feishu_triage_demo.py`（轮询+自动回复，实测4用例全过）
+- 飞书分诊 bot demo：`../real-corpus/feishu_triage_demo.py`（轮询+自动回复，实测4用例全过）；1001 起带 `--log-corpus` 语料回流——每单判定落 `../real-corpus/bot_corpus.jsonl`（text+四维预测+置信+处置），30 分钟窗口内同人短消息（"对/判错/应该是X"）记 confirm/corrected 反馈；watchdog（cron */5）自动拉起并自动升级无 --log-corpus 的旧实例。语料是 500+ 单接力微调对照（RSI-Jev vs Laya v4）的数据源。
 - 对抗集 `adversarial_tickets.json`（20 条真实风格工单+金标）
 
 ## 下一步候选
