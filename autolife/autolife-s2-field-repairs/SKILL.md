@@ -17,6 +17,7 @@ description: Use when S2 机器人日志刷屏/弹窗顶屏/AI对话断/导览�
 | Qwen realtime `timed out during opening handshake` 一次性报 | 出网瞬时抖动，**自带 1/3→2/3→3/3 重试**，第二轮日志出现 `Qwen realtime WebSocket connected` 即自愈 | 不用修；连续 3 次失败才是真断，查出网 |
 | AI 对话彻底断（3 次重试全败） | WiFi 信号弱：`iwconfig wlo1` 看 `Signal=-84dBm` 级别 + `Bit Rate` 掉到 6Mb/s；ICMP 小包通但 TLS 握手超时 | 治本=netplan 把有线 metric 调最低当主路由（改动前备份，需主人点头）；临时=挪近 AP |
 | flow 导览"讲完自己回前台" | **langham.xml 状态机设计如此**：各点位 `next_state="navigate_idle"`，该状态固定 `RobustNavigating pose_name="前台"` | 不是 bug。要改行为：`next_state` 改 `"idle"`（原地待命）或调大 `<Wait duration>`，改前备份 + 重启 flow-service |
+| AI 查天气报 `高德天气 API (base) 返回错误：INVALID_PARAMS` | `get_weather_by_gaode` 的 schema 参数是 **adcode**（行政区划码，如海珠区 440105），不是城市名；且没配 `amap_key`（settings.toml）时必报错 | 单测用 `run({"adcode":"440105"}, None)`；对话级 AI 可能自己挑 external_brain_weather（city 参数）也正常——两个天气工具并存时看日志确认它调了哪个，别只盯 gaode |
 
 ## vision 刷屏日志降级补丁（warning→debug）
 
@@ -69,3 +70,4 @@ langham 模式结构：`<StateMachine initial_state="idle">` + 每点位一个 `
 - **远程诊断命令里别嵌入要查的进程名字串**：`pgrep -f <name>` 会匹配到当前 bash -c 命令本身造成假阳性，用 `ps aux | grep "[n]ame"` 括号技巧或 `pgrep -x`（进程名≤15 字符时）。
 - **链路抖动时远程命令输出可能整个丢失**（stdout 走一半断流）：关键结论用 `{ ...; } | base64 -w0` 包装输出，收到再本地解码，防丢字。
 - **flow 日志 tick 行（`------ tick N --------`）一秒多条刷屏**，看行为要 grep 状态机事件行，别读原始日志。
+- **注入式调试文件（如 `/tmp/<机号>_say.txt` 注入对话文本）被服务消费后即被删除**：测试脚本对它的 remove 要容错 FileNotFoundError；连续注入受"上一轮答复未完成"节流，两次注入间隔 ≥20s，否则后续注入被静默丢弃造成"没反应"假象。

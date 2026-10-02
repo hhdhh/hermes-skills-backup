@@ -22,10 +22,14 @@ description: Hermes Agent 在新机器上从零部署到能对话的完整 playb
 | `references/migration-zip-recipe.md` | Mac → 新机器打包 + 解压 + 验证一条龙（含排除清单 + 大件决策点） |
 | `references/ssh-migration-preflight.md` | SSH 迁移前连通性判定：LAN/virbr 地址、SSH 启用、分阶段审批与可恢复同步 |
 | `references/hermes-windows-config-quirks.md` | hermes 0.19.0 on Windows 配置侧坑：custom_providers / config & .env 实际位置 / built-in provider / dashboard auth（K22-K26） |
+| `references/linux-to-win-migration.md` | Linux→Windows 专用道：Win 机定位（mDNS/TTL/7680/Python 全端口扫）、通道决策（开门脚本/反向拉取）、tar 排除与 profiles 隐藏大头、Win OpenSSH 认证诊断（reset≠密码错、hostname≠用户名） |
+| `templates/win-openssh-open-door.ps1` | Win 目标机一次性管理员粘贴脚本：开 OpenSSH Server + 拉起 NetBird 服务（纯 ASCII，GBK 安全） |
 | `scripts/migration-zip.sh` | Mac 端打 zip 脚本（soul/memory/skills/scripts 全打，symlink 展开） |
 | `scripts/windows-deploy.ps1` | Windows 端从零到能对话的一键脚本 |
+| `scripts/range_http_server.py` | 源机 Range 文件服务器（HEAD+Range 支持，高延迟链路并行分发用） |
+| `templates/win-parallel-download.ps1` | Windows 端多流分段下载模板（并行拉段+缺段补拉+合并+SHA256） |
 
-**Linux → Windows 专属**：zip 排除 + scp 路径 + pwsh 解 UTF-8 + SSH 隧道 + Task Scheduler 一条龙 inline 在档 2.5 文字里；未单独抽出 reference/script 文件（避免一文件一坑）。
+**Linux → Windows 专属**：zip 排除 + scp 路径 + pwsh 解 UTF-8 + SSH 隧道 + Task Scheduler 一条龙 inline 在本节；专用深度（Win 机局域网定位、通道决策、tar 排除与 profiles 隐藏大头、一次性粘贴脚本）抽到 `references/linux-to-win-migration.md` + `templates/win-openssh-open-door.ps1`。
 
 ## 何时用
 
@@ -135,6 +139,11 @@ if ((Get-Item $src).Length -ne (Get-Item $dst).Length) {
 - **跨 shell 传 PowerShell 代码走 base64+UTF-16LE+`-EncodedCommand`**（K18）；**长跑进程用 `cmd /c start /B <bat>` 间接启**（K19）
 - **解压后必须重推 SOUL.md 一次 + icacls 锁权限 + ReadOnly 属性**——防 doctor 自动覆盖（K17）
 - **`pip install hermes-agent` 撞 WinError 32 文件占用**（certifi/pillow/packaging 同时被 Python 进程锁）—— 用 `--user --no-build-isolation`，绕开系统 site-packages（K22）
+- **大迁移包勿写 /tmp**——/tmp 是 tmpfs（容量≈内存一半），多 G tar.gz 中途撞 `Disk quota exceeded` 断管；写到真实磁盘家目录
+- **tar 完成后必须 `du -sh` 对照预期**——排除没咬住时包体积失控膨胀。`--exclude` 用裸组件名（`'.archive-bots'`），含 `/` 的多段 glob 不可靠；profiles 每 bot 1.8G 里 90%+ 是 `skills/.archive-bots/.curator_backups/.hub/.git.disabled-bots`，须 `du -sh profiles/<bot>/skills/.[a-z]*` 才能看到。详见 `references/linux-to-win-migration.md`
+- **迁移 hermes-agent 本体前先看 `hermes --version`**——带 `(+N carried commits)` 或版本高于 PyPI 最新时，目标机 pip 安装会丢全部定制，必须 tar 整仓迁移（保 `.git`，排除 `node_modules`）；只需跑起来用 `git archive HEAD`（~70M vs 整仓 1.6G）
+- **大包快传与远端长任务**：高延迟链路（单流 <1MB/s）传大包走源机 Range 服务器 + Windows 端 N 流分段并行（K31）；SSH 里跑长任务用 `Register-ScheduledTask`+`Start-ScheduledTask`，**不要** `Start-Process -WindowStyle Hidden`（K30 静默死）。详见 `references/linux-to-win-migration.md` §5/§6
+- **Windows 运行配置双写**：config.yaml + .env 拷到 `~/.hermes` 后必须再同步到 `%LOCALAPPDATA%\hermes\`，否则 `-z` 报 not connected / OpenRouter 401（K29）
 
 **同一台机器部署多套灵魂（multi-soul deployment）**：当目标机器要承担**两个或更多不同身份**（如"私人慧慧/灰灰" + "运营助手"），不拷多份完整 hermes，只**改 SOUL/IDENTITY/USER 三件套**：
 - `~/.hermes/SOUL.md` / `IDENTITY.md` / `memories/USER.md` 是**单槽位**——一次只装一个身份；切换身份 = 重写这三个文件
@@ -238,6 +247,9 @@ hermes serve --host 127.0.0.1 --port 8648
 | K20 | **`provider: custom` alias 不够，必须有顶层 `custom_providers`** | hermes 0.19.0 的 `model.aliases.*.provider: custom` 不会自动注册 provider；`hermes chat` 报 `No inference provider configured` | 顶层加 `custom_providers: [{name, base_url, key_env, api_mode: chat_completions, model, models: {...}}]`，或者直接用 built-in provider id（如 `minimax`），env_vars 自动从 `.env` 读 |
 | K21 | **hermes `.env` 路径 ≠ `~/.hermes/.env`** | hermes `config env-path` 实际是 `%LOCALAPPDATA%\hermes\.env`（Windows）/ `~/.local/share/hermes/.env`（Linux），不是 `~/.hermes/.env` | 把 API key 写到 `hermes config env-path` 显示的路径；或者 `hermes config get model.aliases.X` 反查；写错路径时症状是 `HTTP 401: invalid api key`（因为 hermes 拿到字面 `${ENV}` 当 key） |
 | K22 | **Windows `pip install hermes-agent` 撞 WinError 32** | 装到一半 certifi/pillow/packaging 的 .pem / .dist-info 同时被正在跑的 Python 进程锁住（资源管理器、VSCode、hermes 自身），pip 报 `[WinError 32] 另一个程序正在使用此文件` 中断 | 加 `--user --no-build-isolation`，把 hermes-agent 装到 `%APPDATA%\Roaming\Python\Python312\site-packages\`，不碰系统 site-packages；装完用 `Get-FileHash` 验 `hermes.exe` sha，再 `hermes --version` 看能跑 |
+| K29 | **Windows 迁移后 config.yaml/.env 要双写** | `~/.hermes/config.yaml`+.env 拷过去后 `hermes -z` 仍报 "not connected to any AI provider"；只补 .env 到 AppData 后又报 "OpenRouter 401: Missing Authentication header" | hermes Windows 版**运行配置只读** `%LOCALAPPDATA%\hermes\`（config.yaml 和 .env 都在）；`~/.hermes/` 只管灵魂/技能/知识库。迁移时活配置同步到两处，`hermes config path` / `config env-path` 验证落点 |
+| K30 | **SSH 通道拉起的隐藏 PowerShell 静默死** | `Start-Process powershell -WindowStyle Hidden -File x.ps1` 经 paramiko exec 启动后几分钟内消失，.out/.err/Start-Transcript 全不落盘，纯 ASCII + 语法预检通过也照死 | 长任务（pip install/批量解压/大下载）用 `Register-ScheduledTask -Once` + `Start-ScheduledTask`（独立于 SSH 会话存活）；短步用 `powershell -EncodedCommand` 前台跑；验证永远从产物侧（文件大小/SHA256/pip show/--version），不信启动返回值 |
+| K31 | **高延迟链路单流慢 50 倍** | 单流 SFTP/curl ~0.2MB/s，1.7G 要两小时；agent 侧执行超时还连带中断传输 | 源机起 Range 文件服务器（必须实现 do_HEAD，否则客户端 HEAD 探大小就 501 挂）+ Windows 端 Start-Job N 流 `curl -r` 并行合并，实测 11.6MB/s。工具 `scripts/range_http_server.py` + `templates/win-parallel-download.ps1`，成功判据 = SHA256 与源一致，详见 `references/linux-to-win-migration.md` §5 |
 
 ## 主人 ABSOLUTE 模式下的部署话术
 
@@ -263,6 +275,8 @@ hermes serve --host 127.0.0.1 --port 8648
 [  ] hermes-web-ui start 看到 :8648 listening
 [  ] Task Scheduler 里 "Hermes-Heartbeat" 任务在
 [  ] icacls $env:USERPROFILE\.hermes\SOUL.md /inheritance:r /grant:r "${env:USERNAME}:(R,W)"  # 锁权限防 doctor 再覆盖
+[  ] hermes config path / config env-path 指向 AppData\Local\hermes\，且 config.yaml + .env 已从 ~/.hermes 同步过去（K29——否则 -z 报 not connected / OpenRouter 401）
+[  ] 管理员组账户免密：公钥在 C:\ProgramData\ssh\administrators_authorized_keys（用户级 authorized_keys 被忽略，见 references/linux-to-win-migration.md §4）
 ```
 
 **绝对不能信任**：`type SOUL.md | head -1` 在 Windows cp936 编码下默认 SOUL.md 的中文也"看起来像"灵魂；只看头部文本不能区分。字节数 + chat 端到端是唯一可靠验证。

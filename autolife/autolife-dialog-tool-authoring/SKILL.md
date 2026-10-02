@@ -20,12 +20,14 @@ metadata:
 目录：`<robot_env site-packages>/autolife_robot_vision/robot_tools/<tool_name>.py`
 规范（参照同目录 base_tool.py / get_weather_by_gaode.py）：
 1. 模块级 `TOOL_SCHEMA` dict：`{"type":"function","name":...,"description":...,"parameters":{...}}`，description 里写清**何时调/何时不调**（防滥用）。
-2. 模块级 `run(arguments: dict, ai_mgr=None)`，**返回字符串就是模型照念的话**——写"答案本身"（自然口语），不写"识别结果：""查询完成"；失败返回自然道教话术。prompt 铁律禁过程汇报，源头在返回值。
-3. 不写 pre_execute_message（prompt 明令禁止）。
+2. 模块级 `run(arguments: dict, ai_mgr=None)`，**返回字符串就是模型照念的话**——写"答案本身"（自然口语），不写"识别结果：""查询完成""；失败返回自然道教话术。prompt 铁律禁过程汇报，源头在返回值。（查询类工具返回 dict 也被接受——但 dict 里的错误串会被照念给顾客，失败分支同样写自然话术。）
+3. pre_execute_message：静默策略在 base_tool 层拦；要自然等待语则在 schema parameters 里加 `pre_execute_message` 属性 + prompt 给中文例句（英文默认值 "One moment..." 硬编码在 .so，不改它）。
 4. 部署方式：本地写好 → paramiko sftp 推送（heredoc/嵌套引号在 robssh 链里必炸）→ 远端 `ast.parse` 验证 → md5sum 记录。
 
 ## Step 2 注册
 `robot_tools/__init__.py` 的 ENABLED_TOOLS 列表加一行 `"<tool_name>",`（sed 插在同类工具行后）。验证：重启后 vision 日志出现 `Loaded external tool schema: <tool_name>`。
+
+**注册表审计**：改 ENABLED_TOOLS 时逐条核对每个启用条目在 robot_tools/ 下有同名 .py——前任删文件不同步注册表会留幽灵工具（加载不报错、AI 一调就失败）；缺 key 的工具（amap_key 等）当场注释禁用并换免 key 实现，别留给现场。
 
 ## Step 3 prompt 触发段
 `assets/prompt/prompt.txt` 在 `## get_current_time` 段前插入新段：功能/触发句式/规则（返回即答案、看不清直说、禁过程汇报）。插入用 Python `str.replace(anchor, add+anchor, 1)` 而非行号 sed（行号会漂）。先 assert 不含同名段防重复插入。

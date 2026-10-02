@@ -78,14 +78,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-26T02:43:29.453077+00:00",
     "last_reused_patch_generation": 3,
-    "last_used_at": "2026-09-28T02:21:25.697972+00:00",
-    "last_viewed_at": "2026-09-28T02:21:25.653964+00:00",
+    "last_used_at": "2026-10-01T05:08:51.224823+00:00",
+    "last_viewed_at": "2026-10-01T05:08:51.215110+00:00",
     "patch_count": 3,
     "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 8,
+    "view_count": 8
   },
   "agent-reach": {
     "archived_at": null,
@@ -254,16 +254,16 @@
     "archived_at": null,
     "created_at": "2026-09-22T05:57:12.238137+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-30T05:04:55.500717+00:00",
-    "last_reused_patch_generation": 38,
-    "last_used_at": "2026-09-30T05:03:20.449418+00:00",
-    "last_viewed_at": "2026-09-30T05:03:20.421544+00:00",
-    "patch_count": 41,
-    "patch_generation": 41,
+    "last_patched_at": "2026-10-02T06:54:54.661531+00:00",
+    "last_reused_patch_generation": 55,
+    "last_used_at": "2026-10-02T06:11:41.601943+00:00",
+    "last_viewed_at": "2026-10-02T06:11:41.596303+00:00",
+    "patch_count": 57,
+    "patch_generation": 57,
     "pinned": false,
     "state": "active",
-    "use_count": 33,
-    "view_count": 33
+    "use_count": 42,
+    "view_count": 42
   },
   "autolife-ai-dialog-project": {
     "archived_at": null,
@@ -271,14 +271,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-24T10:30:27.062258+00:00",
     "last_reused_patch_generation": 9,
-    "last_used_at": "2026-09-28T07:14:37.010919+00:00",
-    "last_viewed_at": "2026-09-28T07:14:37.002830+00:00",
+    "last_used_at": "2026-10-02T05:49:11.199737+00:00",
+    "last_viewed_at": "2026-10-02T05:49:11.188439+00:00",
     "patch_count": 9,
     "patch_generation": 9,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 4,
+    "view_count": 4
   },
   "autolife-battery-reader-giveup": {
     "archived_at": null,
@@ -316,14 +316,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-30T08:45:13.086658+00:00",
-    "last_viewed_at": "2026-09-30T08:45:13.081111+00:00",
+    "last_used_at": "2026-10-02T05:20:25.610046+00:00",
+    "last_viewed_at": "2026-10-02T05:20:25.592589+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 7,
+    "view_count": 7
   },
   "autolife-boot-auto-reset": {
     "archived_at": null,
@@ -331,14 +331,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-22T06:16:28.461550+00:00",
     "last_reused_patch_generation": 10,
-    "last_used_at": "2026-09-30T03:35:48.381471+00:00",
-    "last_viewed_at": "2026-09-30T03:35:48.356933+00:00",
+    "last_used_at": "2026-10-02T07:57:18.764344+00:00",
+    "last_viewed_at": "2026-10-02T07:57:18.746313+00:00",
     "patch_count": 10,
     "patch_generation": 10,
     "pinned": false,
     "state": "active",
-    "use_count": 31,
-    "view_count": 31
+    "use_count": 36,
+    "view_count": 36
   },
   "autolife-capsule-deployment": {
     "archived_at": null,
@@ -389,16 +389,16 @@
     "archived_at": null,
     "created_at": "2026-09-30T04:34:31.249268+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-30T04:34:31.659754+00:00",
-    "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-30T04:34:35.372973+00:00",
-    "last_viewed_at": "2026-09-30T04:34:35.366591+00:00",
-    "patch_count": 1,
-    "patch_generation": 1,
+    "last_patched_at": "2026-10-02T04:54:59.991280+00:00",
+    "last_reused_patch_generation": 3,
+    "last_used_at": "2026-10-02T07:58:27.883472+00:00",
+    "last_viewed_at": "2026-10-02T07:58:27.877465+00:00",
+    "patch_count": 3,
+    "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 6,
+    "view_count": 6
   },
   "autolife-docking-charge": {
     "archived_at": null,
@@ -436,14 +436,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-19T10:42:20.017534+00:00",
     "last_reused_patch_generation": 6,
-    "last_used_at": "2026-09-30T20:20:16.785934+00:00",
-    "last_viewed_at": "2026-09-30T20:20:16.778586+00:00",
+    "last_used_at": "2026-10-02T04:27:11.601373+00:00",
+    "last_viewed_at": "2026-10-02T04:27:11.577010+00:00",
     "patch_count": 6,
     "patch_generation": 6,
     "pinned": false,
     "state": "active",
-    "use_count": 116,
-    "view_count": 116
+    "use_count": 118,
+    "view_count": 118
   },
   "autolife-fae-scheduler": {
     "archived_at": null,
@@ -451,14 +451,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-19T10:36:46.206707+00:00",
     "last_reused_patch_generation": 1,
-    "last_used_at": "2026-09-30T20:19:20.152061+00:00",
-    "last_viewed_at": "2026-09-30T20:19:20.131392+00:00",
+    "last_used_at": "2026-10-01T02:51:50.330343+00:00",
+    "last_viewed_at": "2026-10-01T02:51:50.306850+00:00",
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 23,
-    "view_count": 23
+    "use_count": 24,
+    "view_count": 24
   },
   "autolife-fae-support": {
     "archived_at": null,
@@ -496,14 +496,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-18T02:31:01.360708+00:00",
     "last_reused_patch_generation": 1,
-    "last_used_at": "2026-09-30T02:36:25.730071+00:00",
-    "last_viewed_at": "2026-09-30T02:36:25.713667+00:00",
+    "last_used_at": "2026-10-02T02:03:35.538966+00:00",
+    "last_viewed_at": "2026-10-02T02:03:35.520234+00:00",
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 44,
-    "view_count": 44
+    "use_count": 45,
+    "view_count": 45
   },
   "autolife-gateway-restart-from-inside": {
     "archived_at": null,
@@ -586,14 +586,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-29T02:13:22.798105+00:00",
-    "last_viewed_at": "2026-09-29T02:13:22.793731+00:00",
+    "last_used_at": "2026-10-01T15:19:20.895348+00:00",
+    "last_viewed_at": "2026-10-01T15:19:20.889807+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 6,
-    "view_count": 6
+    "use_count": 7,
+    "view_count": 7
   },
   "autolife-ops-ai-action-config": {
     "archived_at": null,
@@ -601,14 +601,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-30T06:23:25.925175+00:00",
-    "last_viewed_at": "2026-09-30T06:23:25.919027+00:00",
+    "last_used_at": "2026-10-02T07:57:18.769130+00:00",
+    "last_viewed_at": "2026-10-02T07:57:18.755065+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 8,
-    "view_count": 8
+    "use_count": 14,
+    "view_count": 14
   },
   "autolife-ops-corpus": {
     "archived_at": null,
@@ -624,6 +624,22 @@
     "state": "active",
     "use_count": 2,
     "view_count": 2
+  },
+  "autolife-ops-dds-split": {
+    "archived_at": null,
+    "created_at": "2026-10-02T05:09:28.043334+00:00",
+    "created_by": null,
+    "first_seen_at": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-10-02T05:09:28.048161+00:00",
+    "last_viewed_at": "2026-10-02T05:09:28.043353+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "autolife-ops-robot-diagnosis": {
     "archived_at": null,
@@ -661,14 +677,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-19T10:41:29.032748+00:00",
     "last_reused_patch_generation": 8,
-    "last_used_at": "2026-09-30T08:01:48.286608+00:00",
-    "last_viewed_at": "2026-09-30T08:01:48.247944+00:00",
+    "last_used_at": "2026-10-02T03:35:16.208204+00:00",
+    "last_viewed_at": "2026-10-02T03:35:16.188462+00:00",
     "patch_count": 8,
     "patch_generation": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 98,
-    "view_count": 98
+    "use_count": 100,
+    "view_count": 100
   },
   "autolife-robot-action-creation": {
     "archived_at": null,
@@ -721,14 +737,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-30T19:34:54.601251+00:00",
     "last_reused_patch_generation": 3,
-    "last_used_at": "2026-09-30T19:40:04.471794+00:00",
-    "last_viewed_at": "2026-09-30T19:40:04.446876+00:00",
+    "last_used_at": "2026-10-02T07:57:18.774046+00:00",
+    "last_viewed_at": "2026-10-02T07:57:18.760489+00:00",
     "patch_count": 3,
     "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 8,
+    "view_count": 8
   },
   "autolife-robot-dds-camp-split": {
     "archived_at": null,
@@ -766,14 +782,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": null,
-    "last_viewed_at": null,
+    "last_used_at": "2026-10-02T05:20:25.616032+00:00",
+    "last_viewed_at": "2026-10-02T05:20:25.599734+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 2,
+    "view_count": 2
   },
   "autolife-robot-emotion-dialog": {
     "archived_at": null,
@@ -781,14 +797,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-29T06:52:47.212161+00:00",
     "last_reused_patch_generation": 1,
-    "last_used_at": "2026-09-30T03:58:25.023149+00:00",
-    "last_viewed_at": "2026-09-30T03:58:25.018291+00:00",
+    "last_used_at": "2026-10-01T03:18:20.260685+00:00",
+    "last_viewed_at": "2026-10-01T03:18:20.254171+00:00",
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 6,
-    "view_count": 6
+    "use_count": 7,
+    "view_count": 7
   },
   "autolife-robot-fae-troubleshooting": {
     "archived_at": null,
@@ -871,14 +887,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-28T04:17:06.670361+00:00",
     "last_reused_patch_generation": 3,
-    "last_used_at": "2026-09-28T06:50:38.084606+00:00",
-    "last_viewed_at": "2026-09-28T06:50:38.075921+00:00",
+    "last_used_at": "2026-10-01T03:17:07.198177+00:00",
+    "last_viewed_at": "2026-10-01T03:17:07.172726+00:00",
     "patch_count": 3,
     "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 4,
+    "view_count": 4
   },
   "autolife-robot-package-updater": {
     "archived_at": null,
@@ -901,14 +917,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-28T07:13:05.012583+00:00",
     "last_reused_patch_generation": 15,
-    "last_used_at": "2026-09-30T20:18:45.037560+00:00",
-    "last_viewed_at": "2026-09-30T20:18:45.032225+00:00",
+    "last_used_at": "2026-10-01T03:16:37.078230+00:00",
+    "last_viewed_at": "2026-10-01T03:16:37.046587+00:00",
     "patch_count": 15,
     "patch_generation": 15,
     "pinned": false,
     "state": "active",
-    "use_count": 85,
-    "view_count": 85
+    "use_count": 86,
+    "view_count": 86
   },
   "autolife-robot-remote-diagnosis": {
     "archived_at": null,
@@ -1006,14 +1022,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-20T05:46:25.856314+00:00",
     "last_reused_patch_generation": 2,
-    "last_used_at": "2026-09-30T04:30:45.130237+00:00",
-    "last_viewed_at": "2026-09-30T04:30:45.125107+00:00",
+    "last_used_at": "2026-10-02T04:25:49.196474+00:00",
+    "last_viewed_at": "2026-10-02T04:25:49.171789+00:00",
     "patch_count": 2,
     "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 13,
+    "view_count": 13
   },
   "autolife-robot-vision-inference-stack": {
     "archived_at": null,
@@ -1079,16 +1095,16 @@
     "archived_at": null,
     "created_at": "2026-09-30T06:15:13.227559+00:00",
     "created_by": "agent",
-    "last_patched_at": null,
+    "last_patched_at": "2026-10-02T05:23:13.233573+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": null,
-    "last_viewed_at": null,
-    "patch_count": 0,
-    "patch_generation": 0,
+    "last_used_at": "2026-10-02T05:20:25.604368+00:00",
+    "last_viewed_at": "2026-10-02T05:20:25.587001+00:00",
+    "patch_count": 2,
+    "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 1,
+    "view_count": 1
   },
   "autolife-s2-robox-wizard": {
     "archived_at": null,
@@ -2280,14 +2296,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-30T19:07:04.748449+00:00",
-    "last_viewed_at": "2026-09-30T19:07:04.734713+00:00",
+    "last_used_at": "2026-10-01T05:07:18.228645+00:00",
+    "last_viewed_at": "2026-10-01T05:07:18.223627+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 27,
-    "view_count": 27
+    "use_count": 29,
+    "view_count": 29
   },
   "hermes-agent-skill-authoring": {
     "archived_at": null,
@@ -2323,16 +2339,16 @@
     "archived_at": null,
     "created_at": "2026-09-30T19:30:17.238541+00:00",
     "created_by": null,
-    "last_patched_at": null,
+    "last_patched_at": "2026-10-01T05:10:15.229941+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": null,
-    "last_viewed_at": null,
-    "patch_count": 0,
-    "patch_generation": 0,
+    "last_used_at": "2026-10-02T01:39:53.404556+00:00",
+    "last_viewed_at": "2026-10-02T01:39:53.400090+00:00",
+    "patch_count": 4,
+    "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 1,
+    "view_count": 1
   },
   "hermes-cli-upgrade": {
     "archived_at": null,
@@ -2446,14 +2462,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-19T10:37:04.860717+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": null,
-    "last_viewed_at": null,
+    "last_used_at": "2026-10-01T05:09:59.948699+00:00",
+    "last_viewed_at": "2026-10-01T05:09:59.917661+00:00",
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 1,
+    "view_count": 1
   },
   "hermes-provider-config": {
     "archived_at": null,
@@ -2476,14 +2492,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-29T07:33:34.718919+00:00",
-    "last_viewed_at": "2026-09-29T07:33:34.713700+00:00",
+    "last_used_at": "2026-10-01T05:10:13.250072+00:00",
+    "last_viewed_at": "2026-10-01T05:10:13.225005+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 9,
+    "view_count": 9
   },
   "hermes-session-db-forensics": {
     "archived_at": null,
@@ -2588,6 +2604,22 @@
     "use_count": 1,
     "view_count": 1
   },
+  "hf-weighted-model-eval": {
+    "archived_at": null,
+    "created_at": "2026-10-01T02:53:16.244423+00:00",
+    "created_by": "agent",
+    "first_seen_at": null,
+    "last_patched_at": "2026-10-01T02:53:38.926810+00:00",
+    "last_reused_patch_generation": 1,
+    "last_used_at": "2026-10-01T05:08:51.220493+00:00",
+    "last_viewed_at": "2026-10-01T05:08:51.187602+00:00",
+    "patch_count": 1,
+    "patch_generation": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
+  },
   "himalaya": {
     "archived_at": null,
     "created_at": "2026-09-11T03:54:55.353441+00:00",
@@ -2652,16 +2684,16 @@
     "archived_at": null,
     "created_at": "2026-08-07T04:22:42.366079+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-09-19T10:41:28.751192+00:00",
-    "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-17T09:21:44.305593+00:00",
-    "last_viewed_at": "2026-09-17T09:21:44.302036+00:00",
-    "patch_count": 18,
-    "patch_generation": 7,
+    "last_patched_at": "2026-10-02T03:48:15.608307+00:00",
+    "last_reused_patch_generation": 23,
+    "last_used_at": "2026-10-02T03:47:18.406047+00:00",
+    "last_viewed_at": "2026-10-02T03:47:18.399271+00:00",
+    "patch_count": 43,
+    "patch_generation": 32,
     "pinned": false,
     "state": "active",
-    "use_count": 33,
-    "view_count": 33
+    "use_count": 44,
+    "view_count": 44
   },
   "huihui-upgrade-hermes": {
     "archived_at": null,
@@ -2787,14 +2819,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-29T08:54:04.666355+00:00",
     "last_reused_patch_generation": 17,
-    "last_used_at": "2026-09-30T19:43:02.422402+00:00",
-    "last_viewed_at": "2026-09-30T19:43:02.394707+00:00",
+    "last_used_at": "2026-10-01T02:50:57.217008+00:00",
+    "last_viewed_at": "2026-10-01T02:50:57.202455+00:00",
     "patch_count": 17,
     "patch_generation": 17,
     "pinned": false,
     "state": "active",
-    "use_count": 13,
-    "view_count": 13
+    "use_count": 14,
+    "view_count": 14
   },
   "karpathy-coding-guidelines": {
     "archived_at": null,
@@ -3641,14 +3673,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": null,
-    "last_viewed_at": null,
+    "last_used_at": "2026-10-02T03:42:59.764107+00:00",
+    "last_viewed_at": "2026-10-02T03:42:59.751589+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 4,
+    "view_count": 4
   },
   "network-connectivity-diagnosis": {
     "archived_at": null,
@@ -4385,14 +4417,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-30T05:03:20.485486+00:00",
-    "last_viewed_at": "2026-09-30T05:03:20.476186+00:00",
+    "last_used_at": "2026-10-02T04:26:42.501707+00:00",
+    "last_viewed_at": "2026-10-02T04:26:42.476798+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 4,
+    "view_count": 4
   },
   "robot-workflow-debugging": {
     "archived_at": null,
@@ -4745,14 +4777,14 @@
     "created_by": null,
     "last_patched_at": "2026-09-19T10:36:48.653257+00:00",
     "last_reused_patch_generation": 1,
-    "last_used_at": "2026-10-01T02:47:20.603140+00:00",
-    "last_viewed_at": "2026-10-01T02:47:20.580274+00:00",
+    "last_used_at": "2026-10-01T02:51:32.422642+00:00",
+    "last_viewed_at": "2026-10-01T02:51:32.398444+00:00",
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "software-development/systematic-debugging": {
     "archived_at": null,

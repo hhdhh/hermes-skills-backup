@@ -137,6 +137,8 @@ netbird ssh <user>@<host>.netbird.selfhosted             # 走 daemon 解析
 | `netbird ssh ...` 报 `SSH server detection failed` 或 `SSH Server: Disabled` | 目标机器 netbird SSH server 没开（这是默认安全策略，不是 bug） | 在目标机器执行 `sudo netbird ssh-server enable` 然后 `sudo systemctl restart netbird`（macOS：`brew services restart netbird`） |
 | `netbird ssh <user>@<host>` 报 `lookup ... server misbehaving` | 系统 DNS 127.0.0.53 不转发 `.selfhosted`，但 netbird daemon 在用 mDNS；通常是 daemon 没在跑或 peer 未在线 | 先看本机 daemon 状态、再确认目标机器也在线 |
 | `netbird ssh` 输入了密码仍 Permission denied | SSH server 已开，但目标 netbird daemon 上的用户白名单不含这个用户名 | `netbird ssh-server users list`（目标端）添加；或换已授权的用户名 |
+| peer `lastWireguardHandshake` 全零（`0001-01-01`）+ ping netbird IP 报「需要的密钥不存在」 | 本地 WireGuard 没有该 peer 的密钥 = 握手从未发生，目标机 netbird daemon 没在跑 | 去目标机拉起 netbird 服务；本侧修 DNS/重试无解 |
+| 目标 netbird IP / FQDN 连 `netbird status --json` 的 peers.details 都不在（getent NXDOMAIN） | peer 对本机不可见：ACL 分组隔离，或注册在另一个 management/账号下——不是连接问题 | `sudo netbird down && sudo netbird up` 强刷一次仍无 → 让对方在目标机跑 `netbird status` 核对 Management URL 与账号；本侧重试无解 |
 | mDNS / SSH 都通了 | 才进入凭证、密钥、配置推送 | 走正常 SSH 路径，凭证策略同上 |
 
 ### 凭证安全（NetBird 同样适用）

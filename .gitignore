@@ -18,3 +18,6 @@ goutoujunshi/.data/
 
 # 深克隆临时件
 goutoujunshi/.git/
+
+# 运行时锁文件（skill-keeper 写锁，空文件）
+.locks/
